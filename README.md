@@ -31,9 +31,14 @@ CivicConnect is a citizen service request management platform built for the SEN3
 ### Running locally
 1. Clone the repository and navigate to `src/CivicConnect.Web`.
 2. Ensure PostgreSQL is running.
-3. Update `appsettings.json` connection string if necessary:
-   ```json
-   "DefaultConnection": "Host=localhost;Database=CivicConnect;Username=postgres;Password=postgres"
+3. Configure database credentials in `.env` (copy from `.env.example`):
+   ```env
+   DB_NAME: civicconnect_db
+   DB_USER: civicconnect_admin
+   DB_PASSWORD: your_password_here
+   DB_IP: armanddatabase.webhop.me
+   DB_PORT: 5432
+   DB_SSLMODE: require
    ```
 4. Run EF database migrations:
    ```bash
