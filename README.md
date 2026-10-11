@@ -47,3 +47,5 @@ CivicConnect is a citizen service request management platform built for the SEN3
 
 ## Governance
 This project follows strict branch protection on `main`. Pull requests require at least two approvals. All substantive code must trace back to the PED requirements.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming standards (e.g. `feature/staff-rbac-slice`, `feature/ci-pipeline`), PR templates, verification checklists, and AI usage logging.
