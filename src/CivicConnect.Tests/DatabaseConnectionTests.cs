@@ -19,6 +19,16 @@ public class DatabaseConnectionTests
         var configuration = new ConfigurationBuilder().Build();
         var connectionString = EnvLoader.GetConnectionString(configuration);
 
+        // Fail loudly if DB_IP/DB_NAME were not provided (would fall back to localhost).
+        var dbIp = Environment.GetEnvironmentVariable("DB_IP");
+        var dbName = Environment.GetEnvironmentVariable("DB_NAME");
+        if (string.IsNullOrEmpty(dbIp) || string.IsNullOrEmpty(dbName))
+        {
+            throw new InvalidOperationException(
+                "Database configuration is missing. Set DB_IP and DB_NAME environment variables " +
+                "(or repository secrets) so the test connects to the remote PostgreSQL instance, not localhost.");
+        }
+
         var optionsBuilder = new DbContextOptionsBuilder<CivicConnectDbContext>();
         optionsBuilder.UseNpgsql(connectionString);
 
