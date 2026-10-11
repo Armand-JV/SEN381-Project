@@ -28,6 +28,13 @@ public class DatabaseConnectionTests
         var canConnect = await context.Database.CanConnectAsync();
 
         // Assert
-        Assert.True(canConnect, $"Failed to connect to database using connection string: {connectionString.Replace(Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "", "******")}");
+        var displayConnectionString = connectionString;
+        var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+        if (!string.IsNullOrEmpty(dbPassword))
+        {
+            displayConnectionString = connectionString.Replace(dbPassword, "******");
+        }
+
+        Assert.True(canConnect, $"Failed to connect to database using connection string: {displayConnectionString}");
     }
 }
