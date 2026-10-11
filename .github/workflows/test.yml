@@ -29,7 +29,7 @@
         - name: Restore and build Web
           run: dotnet build src/CivicConnect.Web/CivicConnect.Web.csproj --configuration Release
 
-        - name: Pre-flight: verify remote database is reachable
+        - name: "Pre-flight: verify remote database is reachable"
           env:
             DB_IP: ${{ secrets.DB_IP }}
             DB_PORT: ${{ secrets.DB_PORT || '5432' }}
