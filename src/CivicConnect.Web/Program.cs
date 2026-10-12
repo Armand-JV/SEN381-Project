@@ -1,94 +1,79 @@
+```csharp
 using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Json;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 
-// Load environment variables from .env if present
+// Load environment variables from .env if present.
 EnvLoader.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Ensure .env in content root is also checked
+// Ensure .env in the content root is also checked.
 EnvLoader.Load(builder.Environment.ContentRootPath);
 
-// Add services to the container.
+// Register services.
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddDbContext<CivicConnectDbContext>(options =>
-    options.UseNpgsql(EnvLoader.GetConnectionString(builder.Configuration)));
+    options.UseNpgsql(
+        EnvLoader.GetConnectionString(builder.Configuration)));
 
-        // Ensure .env in content root is also checked
-        EnvLoader.Load(builder.Environment.ContentRootPath);
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
-        // Add services to the container.
-        builder.Services.AddControllersWithViews();
+var app = builder.Build();
 
-        builder.Services.AddDbContext<CivicConnectDbContext>(options =>
-            options.UseNpgsql(EnvLoader.GetConnectionString(builder.Configuration)));
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+else
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+app.UseHttpsRedirection();
+app.UseRouting();
 
-        var app = builder.Build();
+app.UseAuthorization();
 
-        // Configure the HTTP request pipeline.
-        if (!app.Environment.IsDevelopment())
-        {
-            app.UseExceptionHandler("/Home/Error");
-            app.UseHsts();
-        }
-        else
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
+app.MapStaticAssets();
 
-        app.UseHttpsRedirection();
-        app.UseRouting();
-
-        app.UseAuthorization();
-
-        app.MapStaticAssets();
-
-        app.MapGet("/health", async (CivicConnectDbContext db) =>
-        {
-            try
-            {
-                var canConnect = await db.Database.CanConnectAsync();
-                return canConnect
-                    ? Results.Ok(new { status = "Healthy", database = "Connected" })
-                    : Results.Problem("Cannot connect to database.", statusCode: 503);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Database connection error: {ex.Message}", statusCode: 503);
-            }
-        });
-
+// Health check endpoint.
 app.MapGet("/health", async (CivicConnectDbContext db) =>
 {
     try
     {
         var canConnect = await db.Database.CanConnectAsync();
+
         return canConnect
-            ? Results.Ok(new { status = "Healthy", database = "Connected" })
-            : Results.Problem("Cannot connect to database.", statusCode: 503);
+            ? Results.Ok(new
+            {
+                status = "Healthy",
+                database = "Connected"
+            })
+            : Results.Problem(
+                "Cannot connect to database.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
     }
-    catch (Exception ex)
+    catch (Exception)
     {
-        return Results.Problem($"Database connection error: {ex.Message}", statusCode: 503);
+        // Avoid exposing database connection details to callers.
+        return Results.Problem(
+            "Database connection error.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
     }
 });
 
-        app.MapControllerRoute(
-            name: "default",
-            pattern: "{controller=Home}/{action=Index}/{id?}")
-            .WithStaticAssets();
+app.MapControllerRoute(
+        name: "default",
+        pattern: "{controller=Home}/{action=Index}/{id?}")
+    .WithStaticAssets();
 
-        app.Run();
-    }
-}
+app.Run();
+```
