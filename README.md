@@ -21,6 +21,29 @@ CivicConnect is a citizen service request management platform built for the SEN3
 - `CivicConnect.Web`: API Controllers, EF Core DbContext, Migrations
 - `CivicConnect.Tests`: Unit tests (xUnit, Moq, FluentAssertions)
 
+## API Endpoints
+- `POST /api/requests`: Create a new request.
+- `GET /api/requests/{id}`: Get a request by ID.
+- `PUT /api/requests/{id}/state`: Update the state of a request.
+
+## Commands
+
+### Build
+```bash
+dotnet build
+```
+
+### Run
+```bash
+cd src/CivicConnect.Web
+dotnet run
+```
+
+### Tests
+```bash
+dotnet test
+```
+
 ## Setup Instructions
 
 ### Prerequisites
