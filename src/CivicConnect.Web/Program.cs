@@ -1,13 +1,20 @@
+using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
+// Load environment variables from .env if present
+EnvLoader.Load();
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Ensure .env in content root is also checked
+EnvLoader.Load(builder.Environment.ContentRootPath);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddDbContext<CivicConnectDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(EnvLoader.GetConnectionString(builder.Configuration)));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -32,6 +39,21 @@ app.UseRouting();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+app.MapGet("/health", async (CivicConnectDbContext db) =>
+{
+    try
+    {
+        var canConnect = await db.Database.CanConnectAsync();
+        return canConnect
+            ? Results.Ok(new { status = "Healthy", database = "Connected" })
+            : Results.Problem("Cannot connect to database.", statusCode: 503);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Database connection error: {ex.Message}", statusCode: 503);
+    }
+});
 
 app.MapControllerRoute(
     name: "default",
