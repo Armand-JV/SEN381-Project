@@ -1,5 +1,7 @@
 using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
+using CivicConnect.Application.Patterns.Observer;
+using CivicConnect.Application.Patterns.Strategy;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
@@ -29,8 +31,19 @@ public partial class Program
         // Add services to the container.
         builder.Services.AddControllersWithViews();
 
-        builder.Services.AddDbContext<CivicConnectDbContext>(options =>
-            options.UseNpgsql(EnvLoader.GetConnectionString(builder.Configuration)));
+        if (!builder.Environment.IsEnvironment("Testing"))
+        {
+            builder.Services.AddDbContext<CivicConnectDbContext>(options =>
+                options.UseNpgsql(EnvLoader.GetConnectionString(builder.Configuration)));
+        }
+
+        // Register Application Patterns
+        builder.Services.AddScoped<CategoryValidationContext>();
+        builder.Services.AddScoped<RequestStateNotifier>();
+
+        // Register Strategies and Observers
+        builder.Services.AddScoped<ICategoryValidationStrategy, Category1ValidationStrategy>();
+        builder.Services.AddScoped<IRequestStateObserver, LogRequestStateObserver>();
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();

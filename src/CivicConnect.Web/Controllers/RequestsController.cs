@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
 using CivicConnect.Domain.Entities;
@@ -40,7 +41,7 @@ public class RequestsController : ControllerBase
             Description = dto.Description,
             CategoryId = dto.CategoryId,
             CreatedAt = DateTime.UtcNow,
-            RequesterId = "user123", // Simulated logged in user
+            RequesterId = User.Identity?.Name ?? "Anonymous",
             State = RequestState.Open
         };
 
@@ -81,6 +82,11 @@ public class RequestsController : ControllerBase
         var request = await _context.Requests.FindAsync(id);
         if (request == null) return NotFound();
 
+        if (request.State == RequestState.Closed && dto.NewState == RequestState.Open)
+        {
+            return BadRequest("Cannot transition from Closed to Open.");
+        }
+
         var oldState = request.State;
         request.State = dto.NewState;
 
@@ -90,7 +96,7 @@ public class RequestsController : ControllerBase
             PreviousState = oldState,
             NewState = request.State,
             ChangedAt = DateTime.UtcNow,
-            ChangedBy = "admin", // Simulated admin
+            ChangedBy = User.Identity?.Name ?? "Anonymous",
             Reason = dto.Reason
         });
 
