@@ -1,5 +1,9 @@
 using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
+using CivicConnect.Application.Patterns.Observer;
+using CivicConnect.Application.Patterns.Strategy;
+using CivicConnect.Web.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +18,16 @@ EnvLoader.Load(builder.Environment.ContentRootPath);
 
 // Register services.
 builder.Services.AddControllersWithViews();
+
+builder.Services
+    .AddAuthentication("TestHeader")
+    .AddScheme<AuthenticationSchemeOptions, TestHeaderAuthenticationHandler>("TestHeader", _ => { });
+builder.Services.AddAuthorization();
+
+builder.Services.AddScoped<CategoryValidationContext>();
+builder.Services.AddScoped<ICategoryValidationStrategy, Category1ValidationStrategy>();
+builder.Services.AddScoped<IRequestStateObserver, LogRequestStateObserver>();
+builder.Services.AddScoped<RequestStateNotifier>();
 
 builder.Services.AddDbContext<CivicConnectDbContext>(options =>
     options.UseNpgsql(
@@ -39,9 +53,11 @@ else
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+app.MapControllers();
 
 // Health check endpoint.
 app.MapGet("/health", async (CivicConnectDbContext db) =>
