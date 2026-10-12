@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
+using CivicConnect.Application.Services;
 using CivicConnect.Domain.Entities;
 using CivicConnect.Domain.Enums;
 using CivicConnect.Web.Data;
@@ -18,18 +19,22 @@ public class RequestsController : ControllerBase
     private readonly CivicConnectDbContext _context;
     private readonly CategoryValidationContext _validationContext;
     private readonly RequestStateNotifier _notifier;
+    private readonly IAccessControlService _accessControl;
 
     public RequestsController(
         CivicConnectDbContext context,
         CategoryValidationContext validationContext,
-        RequestStateNotifier notifier)
+        RequestStateNotifier notifier,
+        IAccessControlService accessControl)
     {
         _context = context;
         _validationContext = validationContext;
         _notifier = notifier;
+        _accessControl = accessControl;
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> CreateRequest([FromBody] CreateRequestDto dto)
     {
         var category = await _context.Categories.FindAsync(dto.CategoryId);
@@ -50,18 +55,18 @@ public class RequestsController : ControllerBase
             return BadRequest("Request validation failed for the selected category.");
         }
 
-        _context.Requests.Add(request);
-        
+
         // Initial state log
-        _context.StatusHistories.Add(new StatusHistory
+        request.History.Add(new StatusHistory
         {
-            RequestId = request.Id, // Link by ID since EF Core might require proper linking
             PreviousState = RequestState.Open,
             NewState = RequestState.Open,
             ChangedAt = DateTime.UtcNow,
-            ChangedBy = "user123",
+            ChangedBy = User.Identity?.Name ?? "Anonymous",
             Reason = "Initial submission"
         });
+
+        _context.Requests.Add(request);
 
         await _context.SaveChangesAsync();
 
@@ -69,18 +74,31 @@ public class RequestsController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<IActionResult> GetRequest(int id)
     {
         var request = await _context.Requests.Include(r => r.Category).FirstOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
+
+        if (!_accessControl.CanAccess(User, request))
+        {
+            return Forbid();
+        }
+
         return Ok(request);
     }
 
     [HttpPut("{id}/state")]
+    [Authorize]
     public async Task<IActionResult> UpdateState(int id, [FromBody] UpdateStateDto dto)
     {
         var request = await _context.Requests.FindAsync(id);
         if (request == null) return NotFound();
+
+        if (!_accessControl.CanAccess(User, request))
+        {
+            return Forbid();
+        }
 
         if (request.State == RequestState.Closed && dto.NewState == RequestState.Open)
         {
