@@ -29,7 +29,14 @@
         - name: Restore and build Web
           run: dotnet build src/CivicConnect.Web/CivicConnect.Web.csproj --configuration Release
 
+        - name: Restore and build Tests
+          run: dotnet build src/CivicConnect.Tests/CivicConnect.Tests.csproj --configuration Release
+
+        - name: Run unit and integration tests
+          run: dotnet test src/CivicConnect.Tests/CivicConnect.Tests.csproj --configuration Release --verbosity normal --filter "FullyQualifiedName!~DatabaseConnectionTests"
+
         - name: "Pre-flight: verify remote database is reachable"
+          if: ${{ env.DB_IP != '' }}
           env:
             DB_IP: ${{ secrets.DB_IP }}
             DB_PORT: ${{ secrets.DB_PORT || '5432' }}
@@ -46,7 +53,8 @@
             }
             echo "Remote database is reachable."
 
-        - name: Run tests
+        - name: Run database connection tests
+          if: ${{ env.DB_IP != '' }}
           env:
             DB_IP: ${{ secrets.DB_IP }}
             DB_NAME: ${{ secrets.DB_NAME }}
@@ -54,4 +62,4 @@
             DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
             DB_PORT: ${{ secrets.DB_PORT || '5432' }}
             DB_SSLMODE: ${{ secrets.DB_SSLMODE || 'require' }}
-          run: dotnet test src/CivicConnect.Tests/CivicConnect.Tests.csproj --configuration Release --verbosity normal
+          run: dotnet test src/CivicConnect.Tests/CivicConnect.Tests.csproj --configuration Release --verbosity normal --filter "FullyQualifiedName~DatabaseConnectionTests"
