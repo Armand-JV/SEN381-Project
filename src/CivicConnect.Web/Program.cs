@@ -1,4 +1,3 @@
-```csharp
 using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
 using Microsoft.AspNetCore.Builder;
@@ -76,4 +75,3 @@ app.MapControllerRoute(
     .WithStaticAssets();
 
 app.Run();
-```
