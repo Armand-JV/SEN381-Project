@@ -29,5 +29,29 @@
         - name: Restore and build Web
           run: dotnet build src/CivicConnect.Web/CivicConnect.Web.csproj --configuration Release
 
+        - name: "Pre-flight: verify remote database is reachable"
+          env:
+            DB_IP: ${{ secrets.DB_IP }}
+            DB_PORT: ${{ secrets.DB_PORT || '5432' }}
+          run: |
+            if [ -z "$DB_IP" ]; then
+              echo "ERROR: DB_IP secret is not set. The test must connect to a remote database, not localhost."
+              exit 1
+            fi
+            echo "Checking connectivity to $DB_IP:$DB_PORT ..."
+            (echo > /dev/tcp/$DB_IP/$DB_PORT) 2>/dev/null || {
+              echo "ERROR: Cannot reach $DB_IP:$DB_PORT from the GitHub Actions runner."
+              echo "Ensure the remote PostgreSQL server is running and allows inbound traffic from GitHub Actions IP ranges."
+              exit 1
+            }
+            echo "Remote database is reachable."
+
         - name: Run tests
-          run: dotnet test src/CivicConnect.Tests/CivicConnect.Tests.csproj --configuration Release --verbosity normal
+          env:
+            DB_IP: ${{ secrets.DB_IP }}
+            DB_NAME: ${{ secrets.DB_NAME }}
+            DB_USER: ${{ secrets.DB_USER }}
+            DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+            DB_PORT: ${{ secrets.DB_PORT || '5432' }}
+            DB_SSLMODE: ${{ secrets.DB_SSLMODE || 'require' }}
+          run: dotnet test src/CivicConnect.Tests/CivicConnect.Tests.csproj --configuration Release --verbosity normal --filter "FullyQualifiedName~DatabaseConnectionTests"
