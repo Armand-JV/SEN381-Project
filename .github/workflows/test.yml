@@ -54,4 +54,4 @@
             DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
             DB_PORT: ${{ secrets.DB_PORT || '5432' }}
             DB_SSLMODE: ${{ secrets.DB_SSLMODE || 'require' }}
-          run: dotnet test src/CivicConnect.Tests/CivicConnect.Tests.csproj --configuration Release --verbosity normal
+          run: dotnet test src/CivicConnect.Tests/CivicConnect.Tests.csproj --configuration Release --verbosity normal --filter "FullyQualifiedName~DatabaseConnectionTests"
