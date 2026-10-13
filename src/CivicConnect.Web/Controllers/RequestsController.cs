@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using CivicConnect.Application.Policies;
 using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
+using CivicConnect.Application.Services;
 using CivicConnect.Domain.Entities;
 using CivicConnect.Domain.Enums;
 using CivicConnect.Web.Data;
@@ -21,15 +22,18 @@ public class RequestsController : ControllerBase
     private readonly CivicConnectDbContext _context;
     private readonly CategoryValidationContext _validationContext;
     private readonly RequestStateNotifier _notifier;
+    private readonly IAccessControlService _accessControl;
 
     public RequestsController(
         CivicConnectDbContext context,
         CategoryValidationContext validationContext,
-        RequestStateNotifier notifier)
+        RequestStateNotifier notifier,
+        IAccessControlService accessControl)
     {
         _context = context;
         _validationContext = validationContext;
         _notifier = notifier;
+        _accessControl = accessControl;
     }
 
     [HttpPost]
@@ -56,8 +60,7 @@ public class RequestsController : ControllerBase
             return BadRequest("Request validation failed for the selected category.");
         }
 
-        _context.Requests.Add(request);
-        
+
         // Initial state log
         request.History.Add(new StatusHistory
         {
@@ -67,6 +70,8 @@ public class RequestsController : ControllerBase
             ChangedBy = actor,
             Reason = "Initial submission"
         });
+
+        _context.Requests.Add(request);
 
         await _context.SaveChangesAsync();
 

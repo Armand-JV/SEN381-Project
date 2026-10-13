@@ -1,3 +1,6 @@
+using CivicConnect.Application.Patterns.Observer;
+using CivicConnect.Application.Patterns.Strategy;
+using CivicConnect.Application.Services;
 using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
 using CivicConnect.Application.Patterns.Observer;
@@ -81,6 +84,27 @@ builder.Services.AddDbContext<CivicConnectDbContext>(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// JWT Authentication Configuration
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER"),
+            ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_SECRET") ?? "super_secret_default_key_change_me"))
+        };
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<IAccessControlService, AccessControlService>();
+builder.Services.AddScoped<CategoryValidationContext>();
+builder.Services.AddScoped<RequestStateNotifier>();
 
 var app = builder.Build();
 
