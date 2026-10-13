@@ -4,9 +4,12 @@ using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
 using CivicConnect.Web.Authentication;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 // Load environment variables from .env if present.
 EnvLoader.Load();
@@ -19,9 +22,52 @@ EnvLoader.Load(builder.Environment.ContentRootPath);
 // Register services.
 builder.Services.AddControllersWithViews();
 
-builder.Services
-    .AddAuthentication("TestHeader")
-    .AddScheme<AuthenticationSchemeOptions, TestHeaderAuthenticationHandler>("TestHeader", _ => { });
+const string testHeaderScheme = "TestHeader";
+const string applicationAuthenticationScheme = "CivicConnectAuthentication";
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+var hasJwtConfiguration = !string.IsNullOrWhiteSpace(jwtSecret)
+    && !string.IsNullOrWhiteSpace(jwtIssuer)
+    && !string.IsNullOrWhiteSpace(jwtAudience);
+
+var authenticationBuilder = builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = applicationAuthenticationScheme;
+        options.DefaultChallengeScheme = applicationAuthenticationScheme;
+    })
+    .AddPolicyScheme(applicationAuthenticationScheme, null, options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            var authorization = context.Request.Headers.Authorization.ToString();
+            return hasJwtConfiguration
+                && authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                ? JwtBearerDefaults.AuthenticationScheme
+                : testHeaderScheme;
+        };
+    })
+    .AddScheme<AuthenticationSchemeOptions, TestHeaderAuthenticationHandler>(testHeaderScheme, _ => { });
+
+if (hasJwtConfiguration)
+{
+    authenticationBuilder.AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret!)),
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+}
+
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<CategoryValidationContext>();

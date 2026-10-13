@@ -94,17 +94,6 @@ namespace CivicConnect.Web.Migrations
                             Description = "Public parks and recreation",
                             Name = "Parks"
                         });
-
-            modelBuilder.Entity("CivicConnect.Domain.Entities.AuditEntry", b =>
-                {
-                    b.HasOne("CivicConnect.Domain.Entities.Request", "Request")
-                        .WithMany("AuditEntries")
-                        .HasForeignKey("RequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Request");
-                });
                 });
 
             modelBuilder.Entity("CivicConnect.Domain.Entities.Comment", b =>
@@ -137,6 +126,17 @@ namespace CivicConnect.Web.Migrations
                     b.HasIndex("RequestId");
 
                     b.ToTable("Comments");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 10, 1, 9, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "staff-1",
+                            IsInternal = false,
+                            RequestId = 2,
+                            Text = "Thank you for reporting this issue. Our team will investigate it."
+                        });
                 });
 
             modelBuilder.Entity("CivicConnect.Domain.Entities.Request", b =>
@@ -181,9 +181,8 @@ namespace CivicConnect.Web.Migrations
                         new
                         {
                             Id = 2,
-                            AssigneeId = (string)null,
                             CategoryId = 1,
-                            CreatedAt = new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 10, 1, 8, 0, 0, 0, DateTimeKind.Utc),
                             Description = "A large pothole is affecting traffic near the community center.",
                             RequesterId = "requester-2",
                             State = 0,
@@ -225,18 +224,15 @@ namespace CivicConnect.Web.Migrations
                     b.ToTable("StatusHistories");
                 });
 
-            modelBuilder.Entity("CivicConnect.Domain.Entities.Comment", b =>
+            modelBuilder.Entity("CivicConnect.Domain.Entities.AuditEntry", b =>
                 {
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CreatedAt = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc),
-                            CreatedBy = "staff-1",
-                            IsInternal = false,
-                            RequestId = 2,
-                            Text = "Thank you for reporting this issue. Our team will investigate it."
-                        });
+                    b.HasOne("CivicConnect.Domain.Entities.Request", "Request")
+                        .WithMany("AuditEntries")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Request");
                 });
 
             modelBuilder.Entity("CivicConnect.Domain.Entities.Comment", b =>
@@ -270,11 +266,11 @@ namespace CivicConnect.Web.Migrations
 
             modelBuilder.Entity("CivicConnect.Domain.Entities.Request", b =>
                 {
+                    b.Navigation("AuditEntries");
+
                     b.Navigation("Comments");
 
                     b.Navigation("History");
-
-                    b.Navigation("AuditEntries");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using CivicConnect.Application.Policies;
@@ -32,10 +33,13 @@ public class RequestsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> CreateRequest([FromBody] CreateRequestDto dto)
     {
         var category = await _context.Categories.FindAsync(dto.CategoryId);
         if (category == null) return BadRequest("Invalid category.");
+
+        var actor = GetActor();
 
         var request = new Request
         {
@@ -43,7 +47,7 @@ public class RequestsController : ControllerBase
             Description = dto.Description,
             CategoryId = dto.CategoryId,
             CreatedAt = DateTime.UtcNow,
-            RequesterId = User.Identity?.Name ?? "Anonymous",
+            RequesterId = actor,
             State = RequestState.Open
         };
 
@@ -60,7 +64,7 @@ public class RequestsController : ControllerBase
             PreviousState = RequestState.Open,
             NewState = RequestState.Open,
             ChangedAt = DateTime.UtcNow,
-            ChangedBy = User.Identity?.Name ?? "Anonymous",
+            ChangedBy = actor,
             Reason = "Initial submission"
         });
 
@@ -70,14 +74,56 @@ public class RequestsController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "REQUESTER,STAFF,MANAGER")]
     public async Task<IActionResult> GetRequest(int id)
     {
         var request = await _context.Requests
+            .AsNoTracking()
             .Include(r => r.Category)
             .Include(r => r.Comments)
             .FirstOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
+
+        if (User.IsInRole("REQUESTER"))
+        {
+            if (request.RequesterId != GetActor()) return Forbid();
+            request.Comments = request.Comments.Where(comment => !comment.IsInternal).ToList();
+        }
+
         return Ok(request);
+    }
+
+    [HttpPost("{id}/comments")]
+    [Authorize(Roles = "REQUESTER,STAFF,MANAGER")]
+    public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Text))
+        {
+            return BadRequest("Comment text is required.");
+        }
+
+        var request = await _context.Requests.FindAsync(id);
+        if (request == null) return NotFound();
+
+        var actor = GetActor();
+        if (User.IsInRole("REQUESTER"))
+        {
+            if (request.RequesterId != actor) return Forbid();
+            if (dto.IsInternal) return Forbid();
+        }
+
+        var comment = new Comment
+        {
+            RequestId = request.Id,
+            Text = dto.Text.Trim(),
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = actor,
+            IsInternal = dto.IsInternal
+        };
+        _context.Comments.Add(comment);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetRequest), new { id = request.Id }, comment);
     }
 
     [HttpGet("/api/staff/requests")]
@@ -245,7 +291,11 @@ public class RequestsController : ControllerBase
         return Ok(request);
     }
 
-    private string GetActor() => User.Identity?.Name ?? "Anonymous";
+    private string GetActor() =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? User.FindFirstValue("sub")
+        ?? User.Identity?.Name
+        ?? throw new InvalidOperationException("The authenticated principal has no actor identifier.");
 }
 
 public class CreateRequestDto
@@ -259,6 +309,12 @@ public class UpdateStateDto
 {
     public RequestState NewState { get; set; }
     public string Reason { get; set; } = string.Empty;
+}
+
+public class AddCommentDto
+{
+    public string Text { get; set; } = string.Empty;
+    public bool IsInternal { get; set; }
 }
 
 public class AssignRequestDto
