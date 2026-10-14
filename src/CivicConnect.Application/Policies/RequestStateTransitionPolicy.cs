@@ -6,7 +6,7 @@ namespace CivicConnect.Application.Policies;
 
 public static class RequestStateTransitionPolicy
 {
-    private static readonly IReadOnlyDictionary<RequestState, IReadOnlySet<RequestState>> PermittedTransitions =
+    private static readonly Dictionary<RequestState, IReadOnlySet<RequestState>> PermittedTransitions =
         new Dictionary<RequestState, IReadOnlySet<RequestState>>
         {
             [RequestState.Open] = new HashSet<RequestState>

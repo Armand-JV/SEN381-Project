@@ -73,7 +73,7 @@ public static class EnvLoader
             }
 
             // Support either 'KEY: VALUE' or 'KEY=VALUE'
-            var separatorIndex = line.IndexOfAny(new[] { ':', '=' });
+            var separatorIndex = line.AsSpan().IndexOfAny(':', '=');
             if (separatorIndex <= 0)
             {
                 continue;

@@ -1,16 +1,11 @@
 using System;
-using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Linq;
 using System.Threading.Tasks;
 using CivicConnect.Domain.Entities;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
 using CivicConnect.Domain.Enums;
 using CivicConnect.Web.Controllers;
+using CivicConnect.Web.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -31,7 +26,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task UpdateState_ClosedToOpen_ReturnsBadRequest()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         var category = new Category { Name = "TestCategory" };
         db.Categories.Add(category);
         await db.SaveChangesAsync();
@@ -42,12 +38,13 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
             Title = "Title",
             Description = "Desc",
             State = RequestState.Closed,
-            RequesterId = "alice"
+            RequesterId = "alice",
+            AssigneeId = "staff-1"
         };
         db.Requests.Add(request);
         await db.SaveChangesAsync();
 
-        var response = await AuthenticateAs("alice").PutAsJsonAsync(
+        var response = await _factory.CreateClient().AsStaff("staff-1").PutAsJsonAsync(
             $"/api/requests/{request.Id}/state",
             new UpdateStateDto { NewState = RequestState.Open, Reason = "Reopen" });
 
@@ -57,7 +54,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task UpdateState_ValidTransition_ReturnsOkAndPersistsHistory()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         var category = new Category { Name = "TestCategory" };
         db.Categories.Add(category);
         await db.SaveChangesAsync();
@@ -65,24 +63,26 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
         var request = new Request
         {
             CategoryId = category.Id,
-            Title = "Open request",
+            Title = "Assigned request",
             Description = "Description",
-            State = RequestState.Open,
-            RequesterId = "alice"
+            State = RequestState.Assigned,
+            RequesterId = "alice",
+            AssigneeId = "staff-1"
         };
         db.Requests.Add(request);
         await db.SaveChangesAsync();
 
-        var response = await AuthenticateAs("alice").PutAsJsonAsync(
+        var response = await _factory.CreateClient().AsStaff("staff-1").PutAsJsonAsync(
             $"/api/requests/{request.Id}/state",
             new UpdateStateDto { NewState = RequestState.InProgress, Reason = "Work started" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var verificationDb = _factory.CreateDbContext();
+        using var verificationScope = _factory.Services.CreateScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         Assert.Equal(RequestState.InProgress, verificationDb.Requests.Single(item => item.Id == request.Id).State);
         var history = Assert.Single(verificationDb.StatusHistories.Where(item => item.RequestId == request.Id));
-        Assert.Equal(RequestState.Open, history.PreviousState);
+        Assert.Equal(RequestState.Assigned, history.PreviousState);
         Assert.Equal(RequestState.InProgress, history.NewState);
     }
 
@@ -90,10 +90,12 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     public async Task UpdateState_ObserverThrows_ReturnsOkAndPreservesStateChange()
     {
         var logObserverLogger = new Mock<ILogger<CivicConnect.Application.Patterns.Observer.LogRequestStateObserver>>();
+        logObserverLogger.Setup(log => log.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
         using var observerFactory = new TestWebApplicationFactoryWithThrowingObserver(logObserverLogger.Object);
         observerFactory.ResetDatabase();
 
-        var db = observerFactory.CreateDbContext();
+        using var observerScope = observerFactory.Services.CreateScope();
+        var db = observerScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         var category = new Category { Name = "TestCategory" };
         db.Categories.Add(category);
         await db.SaveChangesAsync();
@@ -103,15 +105,14 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
             CategoryId = category.Id,
             Title = "Observer failure",
             Description = "Description",
-            State = RequestState.Open,
-            RequesterId = "alice"
+            State = RequestState.Assigned,
+            RequesterId = "alice",
+            AssigneeId = "staff-1"
         };
         db.Requests.Add(request);
         await db.SaveChangesAsync();
 
-        var client = observerFactory.CreateClient();
-        client.DefaultRequestHeaders.Remove("Authorization");
-        client.DefaultRequestHeaders.Add("Authorization", BuildBearerToken("alice"));
+        var client = observerFactory.CreateClient().AsStaff("staff-1");
 
         var response = await client.PutAsJsonAsync(
             $"/api/requests/{request.Id}/state",
@@ -119,10 +120,11 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var verificationDb = observerFactory.CreateDbContext();
+        using var observerVerificationScope = observerFactory.Services.CreateScope();
+        var verificationDb = observerVerificationScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         Assert.Equal(RequestState.InProgress, verificationDb.Requests.Single(item => item.Id == request.Id).State);
         Assert.Single(verificationDb.StatusHistories.Where(item => item.RequestId == request.Id));
-        VerifyLog(logObserverLogger, LogLevel.Information, $"Request {request.Id} changed state from Open to InProgress");
+        VerifyLog(logObserverLogger, LogLevel.Information, $"Request {request.Id} changed state from Assigned to InProgress");
     }
 
     [Fact]
@@ -136,34 +138,16 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
         Assert.NotNull(notifier);
     }
 
-    private System.Net.Http.HttpClient AuthenticateAs(string userId)
-    {
-        var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Remove("Authorization");
-        client.DefaultRequestHeaders.Add("Authorization", BuildBearerToken(userId));
-        return client;
-    }
-
-    private static string BuildBearerToken(string userId)
-    {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestWebApplicationFactory.JwtSecret));
-        var token = new JwtSecurityToken(
-            issuer: TestWebApplicationFactory.JwtIssuer,
-            audience: TestWebApplicationFactory.JwtIssuer,
-            claims: new[] { new Claim(ClaimTypes.NameIdentifier, userId), new Claim(ClaimTypes.Name, userId) },
-            expires: DateTime.UtcNow.AddMinutes(5),
-            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
-        return "Bearer " + new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
     private static void VerifyLog<T>(Mock<ILogger<T>> logger, LogLevel level, string message)
     {
+#pragma warning disable CA1873
         logger.Verify(log => log.Log(
             level,
             It.IsAny<EventId>(),
             It.Is<It.IsAnyType>((value, _) => value!.ToString()!.Contains(message)),
             It.IsAny<Exception>(),
             It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+#pragma warning restore CA1873
     }
 
     private sealed class TestWebApplicationFactoryWithThrowingObserver : TestWebApplicationFactory
@@ -206,7 +190,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task GetStaffRequests_CombinesFiltersAndPaging()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         db.Requests.AddRange(
             new Request
             {
@@ -306,7 +291,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task AssignRequest_UpdatesStateHistoryAndAuditWithActor()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         var request = new Request
         {
             CategoryId = 1,
@@ -326,7 +312,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var verificationDb = _factory.CreateDbContext();
+        using var verificationScope = _factory.Services.CreateScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         var persisted = verificationDb.Requests.Single(item => item.Id == request.Id);
         Assert.Equal(RequestState.Assigned, persisted.State);
         Assert.Equal("staff-9", persisted.AssigneeId);
@@ -340,7 +327,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task UpdateState_IllegalTransition_LeavesRequestUnchanged()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         var request = new Request
         {
             CategoryId = 1,
@@ -365,7 +353,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task AssignRequest_Requester_ReturnsForbiddenAndLeavesRequestOpen()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         var request = new Request
         {
             CategoryId = 1,
@@ -392,7 +381,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task UpdateState_ValidTransition_PersistsOneHistoryRowWithActor()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         var request = new Request
         {
             CategoryId = 1,
@@ -411,7 +401,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
             new UpdateStateDto { NewState = RequestState.InProgress, Reason = "Work started" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var verificationDb = _factory.CreateDbContext();
+        using var verificationScope = _factory.Services.CreateScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         Assert.Equal(RequestState.InProgress, verificationDb.Requests.Single(item => item.Id == request.Id).State);
         var history = Assert.Single(verificationDb.StatusHistories.Where(item => item.RequestId == request.Id));
         Assert.Equal(RequestState.Assigned, history.PreviousState);
@@ -422,7 +413,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task UpdateState_ReasonRequiredWithoutReason_ReturnsBadRequestAndLeavesRequestOpen()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         var request = new Request
         {
             CategoryId = 1,
@@ -457,7 +449,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal("requester-2", comment.CreatedBy);
         Assert.False(comment.IsInternal);
 
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         Assert.Contains(db.Comments, item =>
             item.RequestId == 2 &&
             item.Text == "More information from requester." &&
@@ -481,7 +474,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task GetRequest_RequesterCannotSeeInternalComments()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         db.Comments.Add(new Comment
         {
             RequestId = 2,
@@ -503,7 +497,8 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task GetRequest_StaffCanSeeInternalComments()
     {
-        var db = _factory.CreateDbContext();
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         db.Comments.Add(new Comment
         {
             RequestId = 2,

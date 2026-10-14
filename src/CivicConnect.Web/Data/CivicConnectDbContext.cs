@@ -19,7 +19,7 @@ public class CivicConnectDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+
         modelBuilder.Entity<Category>().HasData(
             new Category { Id = 1, Name = "Infrastructure", Description = "Roads, bridges, etc." },
             new Category { Id = 2, Name = "Utilities", Description = "Water, electricity, etc." },

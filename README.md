@@ -44,6 +44,18 @@ dotnet run
 dotnet test
 ```
 
+### CI-equivalent checks
+```bash
+dotnet restore src/CivicConnect.slnx
+dotnet build src/CivicConnect.slnx --configuration Release --no-restore
+dotnet ef database update --project src/CivicConnect.Web --startup-project src/CivicConnect.Web --configuration Release --no-build
+dotnet format src/CivicConnect.slnx --verify-no-changes --no-restore
+dotnet test src/CivicConnect.slnx --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --results-directory TestResults --collect "XPlat Code Coverage"
+dotnet list src/CivicConnect.slnx package --vulnerable --include-transitive
+```
+
+CI uses disposable PostgreSQL service values through `ConnectionStrings__DefaultConnection`, applies migrations before tests, and uploads TRX/Cobertura results. Local relational checks require PostgreSQL and `dotnet-ef`; the normal controller tests use an in-memory database. CI credentials are test-only environment values. Never commit production credentials or `.env` files.
+
 ## Setup Instructions
 
 ### Prerequisites
