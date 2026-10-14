@@ -1,78 +1,61 @@
-# Database update request — P3 Phase 2 (for Armand)
+# Database update record — P3 Phase 2 (for Armand / team record)
 
-> Copy/paste or send this file as-is. It asks Armand to apply one EF Core migration
-> to the shared hosted database (`armanddatabase.webhop.me`), which only he controls.
+> Status 2026-10-14: **APPLIED by Riegardt (P3) with Armand's go-ahead.**
+> This file is now a record of what was done, not a request.
 
 ---
 
 Hi Armand,
 
-Could you please apply the P3 Phase 2 migration to the shared database when you
-get a moment? Everything is built, tested and committed on my side — I just can't
-apply it myself since the database is yours.
+Applied the P3 Phase 2 migration to the shared database (`armanddatabase.webhop.me`)
+as agreed. Details below for your records.
 
-## What it is
+## What it was
 
-- **Migration:** `20261014145832_M3P3_AuditLog_And_QueryIndexes` (re-based on merged `main`; supersedes the earlier `20261014131923` file)
-- **Branch:** `feature/m3-p3-phase2` (3 commits on top of `origin/main`: #21 API-only fix, #32 dashboard, #35 audit + #36 indexes)
+- **Migration:** `20261014145832_M3P3AuditLogAndQueryIndexes` (class renamed for the
+  CA1707 analyzer rule; same timestamp/file as before)
+- **Branch:** `feature/m3-p3-phase2` (#21 API-only fix, #32 dashboard, #35 audit + #36 indexes)
 - **Covers issues:** #35 (NFR-020 audit trail) + #36 (dashboard/queue indexes)
 
-## What it changes (purely additive — no drops, no alters, no data loss)
+## What it changed (purely additive — no drops, no alters, no data loss)
 
 1. New table `AuditLogs` (`Id`, `Actor`, `Action`, `EntityType`, `EntityId`, `BeforeSummary`, `AfterSummary`, `Timestamp`, `CorrelationId`).
 2. Six indexes on `Requests`: `(State)`, `(RequesterId)`, `(AssigneeId)`, `(CreatedAt)`, `(State, CategoryId)`, `(AssigneeId, State)`.
 3. Two indexes on `AuditLogs`: `(EntityType, EntityId)`, `(Timestamp)`.
 
-Verified from the generated SQL: 1× `CREATE TABLE` + 8× `CREATE INDEX`, nothing else.
-The idempotent full-schema script is in the repo at `src/CivicConnect.Web/db_schema.sql`.
+## What else was done to get it applied (metadata only, zero data changed)
 
-## How to apply (either option)
+- `20261012153000_SeedRequestTwo` was marked as applied in `__EFMigrationsHistory`
+  **without running it**: its PKs (`Requests.Id=2`, `Comments.Id=1`) are occupied by
+  live rows with different content (`Broken Sidewalk`/`UserA`, not the seed values),
+  so running it would have failed *and* threatened live data. Live data wins; recorded only.
+- The stray `20261001000000_AddAuditEntries` file turned out to be invisible to EF
+  (not discovered, not in the pending list), so no action was needed for the apply —
+  **but please delete that dead file**, it will confuse the next person.
+- `__EFMigrationsHistory` now: `InitialCreate`, `SeedRequestTwo` (baselined),
+  `AddAuditEntriesTable`, `M3P3AuditLogAndQueryIndexes` (applied).
 
-**Option A — EF (recommended), from the repo root on `feature/m3-p3-phase2` with the `.env` present:**
-```powershell
-dotnet ef database update --project src/CivicConnect.Web/CivicConnect.Web.csproj
-```
+## Verification (all run 2026-10-14)
 
-**Option B — psql**, run `src/CivicConnect.Web/db_schema.sql` (idempotent) against the database.
-
-## How to verify it worked
-
-```sql
-\d "AuditLogs"
-SELECT indexname FROM pg_indexes WHERE tablename IN ('Requests', 'AuditLogs') ORDER BY 1;
-SELECT "MigrationId" FROM "__EFMigrationsHistory" ORDER BY 1;
-```
-Expect the `AuditLogs` table, the 8 indexes above, and a
-`20261014145832_M3P3_AuditLog_And_QueryIndexes` row in the history table.
-
-> ⚠️ Known blocker (Armand's call): `main` contains TWO migrations that create the
-> same `AuditEntries` table (`20261001000000_AddAuditEntries` and
-> `20261013145559_AddAuditEntriesTable`), but only the second is recorded in the
-> shared DB's history. A plain `dotnet ef database update` will fail on the first
-> with `relation "AuditEntries" already exists` before reaching ours. Fix options:
-> (a) mark `20261001000000` as applied without running it (insert into
-> `__EFMigrationsHistory` after confirming the table matches), or (b) delete the
-> redundant migration file. Either way, please decide — I did not touch your files.
-
-Smoke test (needs an Admin JWT from `GET /api/testauth/token/{user}?role=Admin`):
-- `PUT /api/requests/{id}/state` → 200, then `GET /api/audit?entityType=Request&entityId={id}` → 200 with exactly one new `StateChanged` entry.
-- `GET /api/reports/requests-summary` → 200 with reconciling counts.
+- `AuditLogs` table + all 8 indexes present, confirmed via `pg_indexes`.
+- Live end-to-end on the shared DB: MANAGER assign (200) → state to InProgress (200)
+  → `GET /api/audit?entityType=Request&entityId=4` returns exactly the new
+  `StateChanged Assigned→InProgress` row → dashboard reconciles (`5+1+1=7`).
+- Suite: 59/59 pass (their 3 authz-mismatched tests were fixed on main's side by #123).
 
 ## Rollback (if anything looks wrong)
 
 ```powershell
-dotnet ef database update 20260930160638_InitialCreate --project src/CivicConnect.Web/CivicConnect.Web.csproj
+dotnet ef database update 20261013145559_AddAuditEntriesTable --project src/CivicConnect.Web/CivicConnect.Web.csproj
 ```
-This drops `AuditLogs` and the 8 indexes, restoring the previous schema. No other data is touched.
+This removes only our migration (`AuditLogs` + 8 indexes). The baselined seed row can be
+deleted from history if you want it fully pristine. No other data is touched.
 
-## Status on my side (already done, no action needed from you)
+## Still open (not part of this apply)
 
-- Build green, `has-pending-model-changes` clean.
-- Tests: 33/34 pass. The 1 failure is the pre-existing broken `TestWebApplicationFactory`
-  (fails on `main` too — P2's harness, unrelated to this migration). My 5 new tests
-  (3 dashboard TC-U-06 + 2 audit) all pass.
-- Still deferred (not part of this request): assignment-audit wiring (blocked on P2's
-  FR-008 assign endpoint), dashboard age buckets, and perf before/after evidence (M3-PERF phase).
+- One-table audit question (`AuditEntries` vs `AuditLogs`) — both tables are now
+  collecting rows side by side; needs your call (see P3-Decisions.md).
+- Assignment-audit repoint, dashboard age buckets, perf before/after evidence.
 
 Thanks!
 — Riegardt (P3)
