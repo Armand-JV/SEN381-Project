@@ -5,7 +5,10 @@ using CivicConnect.Web.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace CivicConnect.Tests;
 
@@ -25,10 +28,10 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         builder.ConfigureServices(services =>
         {
             // Remove the production DbContext registrations (Npgsql).
-            var descriptor = services.FirstOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<CivicConnectDbContext>));
-            if (descriptor != null)
-                services.Remove(descriptor);
+            services.RemoveAll<DbContextOptions<CivicConnectDbContext>>();
+            services.RemoveAll<DbContextOptions>();
+            services.RemoveAll<IDbContextOptionsConfiguration<CivicConnectDbContext>>();
+            services.RemoveAll<IConfigureOptions<DbContextOptions<CivicConnectDbContext>>>();
 
             // Add the in-memory replacement.
             services.AddDbContext<CivicConnectDbContext>(options =>
