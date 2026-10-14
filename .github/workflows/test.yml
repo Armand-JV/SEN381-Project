@@ -62,8 +62,30 @@ jobs:
       - name: Install EF tool
         run: dotnet tool install --global dotnet-ef --version 10.0.12
 
+      - name: Add dotnet global tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
       - name: Apply database migrations
-        run: dotnet ef database update --project src/CivicConnect.Web --startup-project src/CivicConnect.Web --configuration Release --no-build
+        run: |
+          set -euo pipefail
+          echo "Waiting for PostgreSQL to become available..."
+          for i in {1..15}; do
+            if pg_isready -h localhost -p 5432 -U civicconnect_ci -d civicconnect_ci >/dev/null 2>&1; then
+              echo "Postgres ready"
+              break
+            fi
+            echo "Postgres not ready yet (attempt $i/15). Sleeping 2s..."
+            sleep 2
+          done
+
+          echo "Listing available migrations:"
+          dotnet ef migrations list --project src/CivicConnect.Web --startup-project src/CivicConnect.Web --configuration Release --no-build
+
+          echo "Applying database migrations:"
+          dotnet ef database update --project src/CivicConnect.Web --startup-project src/CivicConnect.Web --configuration Release --no-build
+
+          echo "Verifying Requests table exists after migration:"
+          psql "host=localhost port=5432 dbname=civicconnect_ci user=civicconnect_ci password=ci-only-password" -c "SELECT 1 FROM \"Requests\" LIMIT 1;" || (echo "Requests table missing after migration" && exit 1)
 
       - name: Verify formatting
         run: dotnet format src/CivicConnect.slnx --verify-no-changes --no-restore
