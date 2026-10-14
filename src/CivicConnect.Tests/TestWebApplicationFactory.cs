@@ -1,12 +1,15 @@
 using CivicConnect.Web;
 using CivicConnect.Web.Data;
-using Microsoft.AspNetCore.Authentication;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace CivicConnect.Tests;
 
@@ -20,33 +23,38 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     private const string InMemoryDatabaseName = "CivicConnectTest";
     private readonly bool _usePostgres = !string.IsNullOrWhiteSpace(
         Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"));
+    private readonly string _inMemoryDatabaseName = Guid.NewGuid().ToString();
+    internal const string JwtIssuer = "civicconnect-tests";
+    internal const string JwtSecret = "test-only-signing-key-not-for-production-123456789";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         if (!_usePostgres && Environment.GetEnvironmentVariable("CI") == "true")
         {
-            throw new InvalidOperationException("CI requires ConnectionStrings__DefaultConnection.");
-        }
-
-        builder.ConfigureServices(services =>
-        {
+            // Remove the production DbContext registrations (Npgsql).
             services.RemoveAll<DbContextOptions<CivicConnectDbContext>>();
+            services.RemoveAll<DbContextOptions>();
             services.RemoveAll<IDbContextOptionsConfiguration<CivicConnectDbContext>>();
-            services.AddDbContext<CivicConnectDbContext>(options =>
-            {
-                if (_usePostgres)
-                {
-                    options.UseNpgsql(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"));
-                }
-                else
-                {
-                    options.UseInMemoryDatabase(InMemoryDatabaseName);
-                }
-            });
+            services.RemoveAll<IConfigureOptions<DbContextOptions<CivicConnectDbContext>>>();
 
-            services.AddAuthentication(TestAuthenticationHandler.SchemeName)
-                .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                    TestAuthenticationHandler.SchemeName, null);
+            // Add isolated in-memory DB and test signing key for JWT auth.
+            services.AddDbContext<CivicConnectDbContext>(options =>
+                options.UseInMemoryDatabase(_inMemoryDatabaseName));
+
+            services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSecret)),
+                    ValidateIssuer = true,
+                    ValidIssuer = JwtIssuer,
+                    ValidateAudience = true,
+                    ValidAudience = JwtIssuer,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+            });
         });
 
         builder.UseEnvironment("Testing");
