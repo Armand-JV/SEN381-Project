@@ -90,6 +90,7 @@ public class RequestStateNotifierTests
         var failingObserver = new Mock<IRequestStateObserver>();
         var succeedingObserver = new Mock<IRequestStateObserver>();
         var logger = new Mock<ILogger<RequestStateNotifier>>();
+        logger.Setup(log => log.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
 
         failingObserver
             .Setup(observer => observer.OnStateChangedAsync(request, RequestState.Open, RequestState.Assigned))
@@ -112,6 +113,7 @@ public class RequestStateNotifierTests
         var request = new RequestBuilder().WithRequesterId("requester-7").Build();
         request.Id = 42;
         var logger = new Mock<ILogger<LogRequestStateObserver>>();
+        logger.Setup(log => log.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
         var observer = new LogRequestStateObserver(logger.Object);
 
         await observer.OnStateChangedAsync(request, RequestState.Assigned, RequestState.InProgress);
@@ -122,6 +124,7 @@ public class RequestStateNotifierTests
 
     private static void VerifyLog<T>(Mock<ILogger<T>> logger, LogLevel level, string messagePart)
     {
+#pragma warning disable CA1873
         logger.Verify(
             log => log.Log(
                 level,
@@ -130,5 +133,6 @@ public class RequestStateNotifierTests
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.AtLeastOnce);
+#pragma warning restore CA1873
     }
 }

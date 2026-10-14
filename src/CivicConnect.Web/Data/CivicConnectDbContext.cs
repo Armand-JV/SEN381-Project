@@ -32,7 +32,7 @@ public class CivicConnectDbContext : DbContext
         // NFR-020 (Issue #35): audit read path (manager queries by entity + time).
         modelBuilder.Entity<AuditLog>().HasIndex(a => new { a.EntityType, a.EntityId });
         modelBuilder.Entity<AuditLog>().HasIndex(a => a.Timestamp);
-        
+
         modelBuilder.Entity<Category>().HasData(
             new Category { Id = 1, Name = "Infrastructure", Description = "Roads, bridges, etc." },
             new Category { Id = 2, Name = "Utilities", Description = "Water, electricity, etc." },

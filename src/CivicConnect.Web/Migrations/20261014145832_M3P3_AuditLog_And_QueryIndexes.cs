@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CivicConnect.Web.Migrations
 {
     /// <inheritdoc />
-    public partial class M3P3_AuditLog_And_QueryIndexes : Migration
+    public partial class M3P3AuditLogAndQueryIndexes : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

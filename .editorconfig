@@ -1,0 +1,9 @@
+root = true
+
+[**/CivicConnect.Tests/*.cs]
+# Test names intentionally separate behavior, input, and expected outcome.
+dotnet_diagnostic.CA1707.severity = none
+
+[src/CivicConnect.Web/Migrations/*.cs]
+# EF-generated migration arrays execute once; keep generated migration shape.
+dotnet_diagnostic.CA1861.severity = none

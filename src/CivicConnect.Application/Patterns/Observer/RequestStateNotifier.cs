@@ -7,10 +7,22 @@ using Microsoft.Extensions.Logging;
 
 namespace CivicConnect.Application.Patterns.Observer;
 
-public class RequestStateNotifier
+public partial class RequestStateNotifier
 {
     private readonly IEnumerable<IRequestStateObserver> _observers;
     private readonly ILogger<RequestStateNotifier> _logger;
+
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Error,
+        Message = "Request state observer {ObserverType} failed for request {RequestId} changing from {OldState} to {NewState}.")]
+    private static partial void LogObserverFailure(
+        ILogger logger,
+        Exception exception,
+        string observerType,
+        int requestId,
+        RequestState oldState,
+        RequestState newState);
 
     public RequestStateNotifier(
         IEnumerable<IRequestStateObserver> observers,
@@ -30,10 +42,13 @@ public class RequestStateNotifier
             }
             catch (Exception exception)
             {
-                _logger.LogError(
+                LogObserverFailure(
+                    _logger,
                     exception,
-                    "Request state observer {ObserverType} failed for request {RequestId} changing from {OldState} to {NewState}.",
-                    observer.GetType().Name, request.Id, oldState, newState);
+                    observer.GetType().Name,
+                    request.Id,
+                    oldState,
+                    newState);
             }
         }
     }

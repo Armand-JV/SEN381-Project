@@ -33,7 +33,11 @@ public class AuditLogTests : IDisposable
         _db = new CivicConnectDbContext(options);
     }
 
-    public void Dispose() => _db.Dispose();
+    public void Dispose()
+    {
+        _db.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     private static void SetUser(ControllerBase controller, string name, params string[] roles)
     {

@@ -13,7 +13,7 @@ namespace CivicConnect.Web.Migrations
 {
     [DbContext(typeof(CivicConnectDbContext))]
     [Migration("20261014145832_M3P3_AuditLog_And_QueryIndexes")]
-    partial class M3P3_AuditLog_And_QueryIndexes
+    partial class M3P3AuditLogAndQueryIndexes
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

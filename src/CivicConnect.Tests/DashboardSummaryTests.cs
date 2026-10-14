@@ -30,7 +30,11 @@ public class DashboardSummaryTests : IDisposable
         _db = new CivicConnectDbContext(options);
     }
 
-    public void Dispose() => _db.Dispose();
+    public void Dispose()
+    {
+        _db.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     private ReportsController ControllerAs(params string[] roles)
     {
