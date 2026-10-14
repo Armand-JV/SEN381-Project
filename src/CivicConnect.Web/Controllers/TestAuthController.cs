@@ -24,6 +24,11 @@ public class TestAuthController : ControllerBase
           };
 
         var secret = Environment.GetEnvironmentVariable("JWT_SECRET");
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            return Problem("JWT_SECRET is not configured.", statusCode: 500);
+        }
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

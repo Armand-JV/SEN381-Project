@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CivicConnect.Web.Migrations
 {
     [DbContext(typeof(CivicConnectDbContext))]
-    [Migration("20261014131923_M3P3_AuditLog_And_QueryIndexes")]
+    [Migration("20261014145832_M3P3_AuditLog_And_QueryIndexes")]
     partial class M3P3_AuditLog_And_QueryIndexes
     {
         /// <inheritdoc />
@@ -24,6 +24,39 @@ namespace CivicConnect.Web.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("CivicConnect.Domain.Entities.AuditEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RequestId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestId");
+
+                    b.ToTable("AuditEntries");
+                });
 
             modelBuilder.Entity("CivicConnect.Domain.Entities.AuditLog", b =>
                 {
@@ -140,6 +173,17 @@ namespace CivicConnect.Web.Migrations
                     b.HasIndex("RequestId");
 
                     b.ToTable("Comments");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 10, 1, 9, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "staff-1",
+                            IsInternal = false,
+                            RequestId = 2,
+                            Text = "Thank you for reporting this issue. Our team will investigate it."
+                        });
                 });
 
             modelBuilder.Entity("CivicConnect.Domain.Entities.Request", b =>
@@ -191,6 +235,18 @@ namespace CivicConnect.Web.Migrations
                     b.HasIndex("State", "CategoryId");
 
                     b.ToTable("Requests");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 2,
+                            CategoryId = 1,
+                            CreatedAt = new DateTime(2026, 10, 1, 8, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "A large pothole is affecting traffic near the community center.",
+                            RequesterId = "requester-2",
+                            State = 0,
+                            Title = "Pothole on Main Street"
+                        });
                 });
 
             modelBuilder.Entity("CivicConnect.Domain.Entities.StatusHistory", b =>
@@ -227,6 +283,17 @@ namespace CivicConnect.Web.Migrations
                     b.ToTable("StatusHistories");
                 });
 
+            modelBuilder.Entity("CivicConnect.Domain.Entities.AuditEntry", b =>
+                {
+                    b.HasOne("CivicConnect.Domain.Entities.Request", "Request")
+                        .WithMany("AuditEntries")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Request");
+                });
+
             modelBuilder.Entity("CivicConnect.Domain.Entities.Comment", b =>
                 {
                     b.HasOne("CivicConnect.Domain.Entities.Request", null)
@@ -258,6 +325,8 @@ namespace CivicConnect.Web.Migrations
 
             modelBuilder.Entity("CivicConnect.Domain.Entities.Request", b =>
                 {
+                    b.Navigation("AuditEntries");
+
                     b.Navigation("Comments");
 
                     b.Navigation("History");

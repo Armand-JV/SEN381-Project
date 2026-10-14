@@ -14,6 +14,7 @@ using CivicConnect.Web.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace CivicConnect.Tests;
@@ -56,7 +57,9 @@ public class AuditLogTests : IDisposable
         var controller = new RequestsController(
             _db,
             new CategoryValidationContext(Enumerable.Empty<ICategoryValidationStrategy>()),
-            new RequestStateNotifier(Enumerable.Empty<IRequestStateObserver>()),
+            new RequestStateNotifier(
+                Enumerable.Empty<IRequestStateObserver>(),
+                NullLogger<RequestStateNotifier>.Instance),
             new AccessControlService());
         SetUser(controller, name, roles);
         return controller;
@@ -66,6 +69,7 @@ public class AuditLogTests : IDisposable
     public async Task UpdateState_WritesExactlyOneAuditEntry_InSameTransaction()
     {
         var request = new RequestBuilder().WithState(RequestState.Open).Build();
+        request.AssigneeId = "staff1";
         _db.Requests.Add(request);
         await _db.SaveChangesAsync();
 

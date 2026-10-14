@@ -64,6 +64,14 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 2. #35 audit writes + manager-only read endpoint.
 3. #32 dashboard aggregation endpoint (shaped to use the new indexes).
 
+### Merge of main (2026-10-14, `edc4f62` FR-007..010 + `b21e0fc` FR-012 observers)
+- Conflicts resolved in 4 files (the M3-GOV-04 scenario): kept BOTH sides everywhere —
+  their staff endpoints/transition policy/seeds/`AuditEntries` plus our `AuditLogs`/indexes/dashboard.
+- `UpdateState`: took their `GetActor()` (throws when unauthenticated — better for audit integrity than our `"Anonymous"` fallback); our `AuditLogs` write kept below their policy guards.
+- Their merge duplicated the JWT registration in `Program.cs` (`Scheme already exists: Bearer` crashed EVERY factory test); removed the stale pre-#121 block, kept their unified policy-scheme + our `AddProblemDetails()`. Also deduped double `MapControllers()`/registrations.
+- Test fallout is theirs, not ours: `AuditLogTests` needed `AssigneeId` set (their new Assigned guard) — fixed. 3 remaining failures are their `RequestControllerTests` hitting the new `STAFF,MANAGER`-only `UpdateState` with requester tokens (their tests not updated for their own authz change). Our 5 tests pass; suite went from all-factory-failing to 56/59.
+- Open team items (unchanged): one-table audit question (`AuditEntries` is now IN main), role-case convention (main mixes `STAFF` attributes with `Admin` checks), shared-DB migration apply.
+
 ---
 
 ## FR-014 (Issue #32) — Management dashboard counts
