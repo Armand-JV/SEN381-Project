@@ -17,7 +17,7 @@ namespace CivicConnect.Tests;
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
     private const string CiDatabaseName = "civicconnect_ci";
-    private const string InMemoryDatabaseName = "CivicConnectTest";
+    private readonly string _inMemoryDatabaseName = Guid.NewGuid().ToString();
     private readonly bool _usePostgres = !string.IsNullOrWhiteSpace(
         Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"));
 
@@ -40,16 +40,27 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 }
                 else
                 {
-                    options.UseInMemoryDatabase(InMemoryDatabaseName);
+                    options.UseInMemoryDatabase(_inMemoryDatabaseName);
                 }
             });
 
-            services.AddAuthentication(TestAuthenticationHandler.SchemeName)
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = TestAuthenticationHandler.SchemeName;
+                options.DefaultChallengeScheme = TestAuthenticationHandler.SchemeName;
+                options.DefaultForbidScheme = TestAuthenticationHandler.SchemeName;
+            })
                 .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
                     TestAuthenticationHandler.SchemeName, null);
         });
 
         builder.UseEnvironment("Testing");
+    }
+
+    public CivicConnectDbContext CreateDbContext()
+    {
+        var scope = Services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
     }
 
     public void ResetDatabase()
@@ -70,6 +81,9 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 $"Refusing to reset non-CI database '{db.Database.GetDbConnection().Database}'.");
         }
 
-        db.Requests.ExecuteDelete();
+        db.StatusHistories.ExecuteDelete();
+        db.AuditEntries.ExecuteDelete();
+        db.Comments.Where(comment => comment.Id != 1).ExecuteDelete();
+        db.Requests.Where(request => request.Id != 2).ExecuteDelete();
     }
 }

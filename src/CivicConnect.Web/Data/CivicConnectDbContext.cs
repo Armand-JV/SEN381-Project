@@ -1,4 +1,5 @@
 using CivicConnect.Domain.Entities;
+using CivicConnect.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace CivicConnect.Web.Data;
@@ -13,6 +14,7 @@ public class CivicConnectDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<StatusHistory> StatusHistories => Set<StatusHistory>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,6 +24,32 @@ public class CivicConnectDbContext : DbContext
             new Category { Id = 1, Name = "Infrastructure", Description = "Roads, bridges, etc." },
             new Category { Id = 2, Name = "Utilities", Description = "Water, electricity, etc." },
             new Category { Id = 3, Name = "Parks", Description = "Public parks and recreation" }
+        );
+
+        modelBuilder.Entity<Request>().HasData(
+            new Request
+            {
+                Id = 2,
+                Title = "Pothole on Main Street",
+                Description = "A large pothole is affecting traffic near the community center.",
+                CategoryId = 1,
+                State = RequestState.Open,
+                CreatedAt = new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc),
+                RequesterId = "requester-2",
+                AssigneeId = null
+            }
+        );
+
+        modelBuilder.Entity<Comment>().HasData(
+            new Comment
+            {
+                Id = 1,
+                RequestId = 2,
+                Text = "Thank you for reporting this issue. Our team will investigate it.",
+                CreatedAt = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc),
+                CreatedBy = "staff-1",
+                IsInternal = false
+            }
         );
     }
 }
