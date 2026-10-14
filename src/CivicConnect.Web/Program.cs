@@ -32,8 +32,23 @@ builder.Services.AddDbContext<CivicConnectDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// JWT Authentication Configuration
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+// ponytail: local demo identities only; replace with a real identity provider before release.
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = "CivicConnectAuth";
+        options.DefaultChallengeScheme = "CivicConnectAuth";
+        options.DefaultForbidScheme = "CivicConnectAuth";
+    })
+    .AddPolicyScheme("CivicConnectAuth", "JWT or development test headers", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+            context.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment() &&
+            context.RequestServices.GetRequiredService<IConfiguration>().GetValue<bool>("DemoAuth:Enabled") &&
+            !context.Request.Headers.ContainsKey("Authorization") &&
+            context.Request.Headers.ContainsKey("X-Test-Role")
+                ? "TestHeader"
+                : JwtBearerDefaults.AuthenticationScheme;
+    })
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -46,7 +61,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_SECRET") ?? "super_secret_default_key_change_me"))
         };
-    });
+    })
+    .AddScheme<AuthenticationSchemeOptions, TestHeaderAuthenticationHandler>("TestHeader", _ => { });
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAccessControlService, AccessControlService>();
@@ -103,9 +119,8 @@ app.MapGet("/health", async (CivicConnectDbContext db) =>
     }
 });
 
-app.MapControllerRoute(
-        name: "default",
-        pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
+// Keep missing API endpoints out of the SPA fallback.
+app.MapFallback("/api/{**path}", () => Results.NotFound());
+app.MapFallbackToFile("/index.html");
 
 app.Run();

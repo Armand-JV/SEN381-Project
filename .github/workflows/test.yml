@@ -41,6 +41,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/CivicConnect.Web/ClientApp/package-lock.json
+
+      - name: Build frontend
+        working-directory: src/CivicConnect.Web/ClientApp
+        run: |
+          npm ci
+          npm run build
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:

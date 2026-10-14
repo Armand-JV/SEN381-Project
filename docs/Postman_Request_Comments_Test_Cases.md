@@ -23,7 +23,9 @@ The seeded integration-test request is:
 
 ## Authentication
 
-The application currently uses the `TestHeader` authentication scheme. For authenticated requests, add these headers:
+Production uses JWT bearer authentication. Test headers are disabled by default and accepted only in `Development` when the local process explicitly sets `DemoAuth__Enabled=true`. They are not a credential system and must never be enabled outside local development.
+
+For local Postman testing after that opt-in, add:
 
 ```text
 X-Test-Role: REQUESTER
@@ -44,7 +46,7 @@ X-Test-User: manager-1
 
 For anonymous requests, do not send either `X-Test-Role` or `X-Test-User`.
 
-> `TestAuthController` can generate a debug JWT at `GET /api/TestAuth/token/{userId}?role={role}` when compiled in `DEBUG`. The current `Program.cs` configures `TestHeader`, not JWT bearer authentication, so the generated token is not currently used to authenticate these endpoints unless JWT bearer authentication is configured separately.
+> In `DEBUG`, `GET /api/TestAuth/token/{userId}?role={role}` can issue a local demo JWT only when `DemoAuth__Enabled=true` and JWT settings are configured. `Program.cs` validates that JWT through bearer authentication.
 
 ## Test cases
 
