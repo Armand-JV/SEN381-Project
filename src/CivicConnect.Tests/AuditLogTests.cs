@@ -77,7 +77,7 @@ public class AuditLogTests : IDisposable
         _db.Requests.Add(request);
         await _db.SaveChangesAsync();
 
-        var controller = RequestsControllerAs("boss", "Admin");
+        var controller = RequestsControllerAs("boss", "ADMIN");
         var result = await controller.UpdateState(
             request.Id, new UpdateStateDto { NewState = RequestState.Assigned, Reason = "Assigning" });
 
@@ -107,12 +107,12 @@ public class AuditLogTests : IDisposable
         await _db.SaveChangesAsync();
 
         var manager = new AuditController(_db);
-        SetUser(manager, "boss", "Manager");
+        SetUser(manager, "boss", "MANAGER");
         var ok = Assert.IsType<OkObjectResult>(await manager.GetAuditLogs("Request", 1));
         Assert.Single((System.Collections.IEnumerable)ok.Value!);
 
         var requester = new AuditController(_db);
-        SetUser(requester, "u1", "Requester");
+        SetUser(requester, "u1", "REQUESTER");
         Assert.IsType<ForbidResult>(await requester.GetAuditLogs(null, null));
     }
 }

@@ -26,7 +26,7 @@ public class AuditController : ControllerBase
         [FromQuery] string? entityType,
         [FromQuery] int? entityId)
     {
-        if (!User.IsInRole("Admin") && !User.IsInRole("Manager"))
+        if (!User.IsInRole("ADMIN") && !User.IsInRole("MANAGER"))
         {
             return Forbid();
         }

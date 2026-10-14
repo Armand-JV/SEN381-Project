@@ -33,7 +33,7 @@ public class ReportsController : ControllerBase
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to)
     {
-        if (!User.IsInRole("Admin") && !User.IsInRole("Manager"))
+        if (!User.IsInRole("ADMIN") && !User.IsInRole("MANAGER"))
         {
             return Forbid();
         }

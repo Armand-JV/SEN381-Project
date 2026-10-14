@@ -92,9 +92,11 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - **Keys:** `byState` uses enum names (`Open`, `Assigned`, …), `byCategory` uses integer category IDs.
 - **RTM:** title still "working title" (no RTM file in repo; P1 owns RTM). Built to issue text; confirm against RTM in M3-RTM-04.
 
-### Verification (TC-U-06, 2026-10-14)
+### Verification (TC-U-06, 2026-10-14; re-verified live post-merge 2026-10-14)
 - `DashboardSummaryTests` (3 tests): counts reconcile, filters combine, non-manager gets `Forbid` — all pass (`dotnet test --filter DashboardSummaryTests`: 3/3).
 - Live (remote DB): Admin JWT → 200 `{"total":7,"byState":{"Closed":1,"Open":6},"byCategory":{"1":7}}`; Requester → 403; anonymous → 401.
+- Post-merge: full journey live — MANAGER assign (200) → state to InProgress (200) → audit read shows the entry → dashboard `{"total":7,"byState":{"Open":5,"InProgress":1,"Closed":1}}` reconciles.
+- Roles aligned to main's UPPERCASE convention (`ADMIN`/`MANAGER`) after merge #123; live reads re-verified with `?role=MANAGER`.
 - Incidental fix: added `AddProblemDetails()` — required by `UseExceptionHandler()` (no path) on .NET 10; the test host (env `Testing`) hits the non-Development branch.
 - Pre-existing (not mine, not fixed): `TestWebApplicationFactory` is broken on main (Npgsql vs InMemory provider conflict — `RequestControllerTests` fails identically); TC-U-06 deliberately avoids it. Harness fix belongs to P2.
 

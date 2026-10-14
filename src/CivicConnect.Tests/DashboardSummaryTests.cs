@@ -79,7 +79,7 @@ public class DashboardSummaryTests : IDisposable
     public async Task Summary_CountsReconcile_WithUnderlyingData()
     {
         await SeedAsync();
-        var controller = ControllerAs("Admin");
+        var controller = ControllerAs("ADMIN");
 
         var summary = OkBody(await controller.GetRequestsSummary(null, null, null, null, null));
 
@@ -94,7 +94,7 @@ public class DashboardSummaryTests : IDisposable
     public async Task Summary_FiltersCombineCorrectly()
     {
         await SeedAsync();
-        var controller = ControllerAs("Manager");
+        var controller = ControllerAs("MANAGER");
 
         var byState = OkBody(await controller.GetRequestsSummary(RequestState.Open, null, null, null, null));
         Assert.Equal(2, byState.Total);
@@ -110,7 +110,7 @@ public class DashboardSummaryTests : IDisposable
     public async Task Summary_NonManagerGetsForbid()
     {
         await SeedAsync();
-        var controller = ControllerAs("Requester");
+        var controller = ControllerAs("REQUESTER");
 
         Assert.IsType<ForbidResult>(await controller.GetRequestsSummary(null, null, null, null, null));
     }
