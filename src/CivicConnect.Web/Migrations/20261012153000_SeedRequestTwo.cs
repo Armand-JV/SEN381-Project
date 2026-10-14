@@ -1,9 +1,13 @@
+using CivicConnect.Web.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace CivicConnect.Web.Migrations;
 
+[DbContext(typeof(CivicConnectDbContext))]
+[Migration("20261012153000_SeedRequestTwo")]
 public partial class SeedRequestTwo : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
