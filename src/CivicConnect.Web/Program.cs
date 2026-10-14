@@ -54,7 +54,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler();
     app.UseHsts();
 }
 else
@@ -97,9 +97,15 @@ app.MapGet("/health", async (CivicConnectDbContext db) =>
     }
 });
 
-app.MapControllerRoute(
-        name: "default",
-        pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
+// M3-UI-01 (Issue #21): API-only demo path — no Razor UI.
+// Root no longer 404s: Swagger in Development, API pointer otherwise.
+app.MapGet("/", () =>
+{
+    return app.Environment.IsDevelopment()
+        ? Results.Redirect("/swagger")
+        : Results.Ok(new { service = "CivicConnect API", health = "/health", demo = "See docs/P3-Decisions.md M3-UI-01" });
+});
+
+app.MapControllers();
 
 app.Run();
