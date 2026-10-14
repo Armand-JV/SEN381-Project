@@ -46,6 +46,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAccessControlService, AccessControlService>();
+builder.Services.AddSingleton<RequestStateTransitionPolicy>();
 builder.Services.AddScoped<CategoryValidationContext>();
 builder.Services.AddScoped<RequestStateNotifier>();
 

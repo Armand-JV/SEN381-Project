@@ -17,15 +17,9 @@ namespace CivicConnect.Tests;
 /// <summary>
 /// Test-authentication helper.
 ///
-/// The production application has no auth middleware wired up yet (NFR-017 is a future
-/// work item), so this helper does not forge real tokens. Instead it exposes the three
-/// auth roles the codebase already models (<see cref="TestRole"/>) and provides:
-///   - <see cref="WithRole"/> to stamp a role onto an <see cref="HttpClient"/> via a
-///     request header the application can read when auth is implemented.
-///   - <see cref="AsRequester"/>, <see cref="AsStaff"/>, <see cref="AsManager"/> as the
-///     ready-made role presets used by the black-box and negative-behaviour suites.
-///
-/// When the team lands real authentication this helper is the single place to update.
+/// Stamps role and user headers on an <see cref="HttpClient"/>. The test host's
+/// <see cref="TestAuthenticationHandler"/> converts them to an authenticated principal;
+/// production authentication remains JWT Bearer.
 /// </summary>
 public static class TestAuthenticationHelper
 {
@@ -41,8 +35,7 @@ public static class TestAuthenticationHelper
     }
 
     /// <summary>
-    /// Stamps the test role and user id onto <paramref name="client"/>. Callers can also
-    /// supply a raw <see cref="AuthenticationScheme"/> (e.g. "Bearer") for future use.
+    /// Stamps the test role and user ID onto <paramref name="client"/>.
     /// </summary>
     public static HttpClient WithRole(this HttpClient client, TestRole role, string? userId = null)
     {

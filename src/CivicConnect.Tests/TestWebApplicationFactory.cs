@@ -2,10 +2,12 @@ using System.Linq;
 using CivicConnect.Web;
 using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CivicConnect.Tests;
 
@@ -24,15 +26,16 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.ConfigureServices(services =>
         {
-            // Remove the production DbContext registrations (Npgsql).
-            var descriptor = services.FirstOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<CivicConnectDbContext>));
-            if (descriptor != null)
-                services.Remove(descriptor);
+            // Remove production options and their configuration callbacks (Npgsql).
+            services.RemoveAll<DbContextOptions<CivicConnectDbContext>>();
+            services.RemoveAll<Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptionsConfiguration<CivicConnectDbContext>>();
 
             // Add the in-memory replacement.
             services.AddDbContext<CivicConnectDbContext>(options =>
                 options.UseInMemoryDatabase(InMemoryDatabaseName));
+
+            services.AddAuthentication("Test")
+                .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>("Test", _ => { });
         });
 
         builder.UseEnvironment("Testing");

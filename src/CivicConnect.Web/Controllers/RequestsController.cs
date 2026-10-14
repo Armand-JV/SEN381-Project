@@ -20,17 +20,20 @@ public class RequestsController : ControllerBase
     private readonly CategoryValidationContext _validationContext;
     private readonly RequestStateNotifier _notifier;
     private readonly IAccessControlService _accessControl;
+    private readonly RequestStateTransitionPolicy _transitionPolicy;
 
     public RequestsController(
         CivicConnectDbContext context,
         CategoryValidationContext validationContext,
         RequestStateNotifier notifier,
-        IAccessControlService accessControl)
+        IAccessControlService accessControl,
+        RequestStateTransitionPolicy transitionPolicy)
     {
         _context = context;
         _validationContext = validationContext;
         _notifier = notifier;
         _accessControl = accessControl;
+        _transitionPolicy = transitionPolicy;
     }
 
     [HttpPost]
@@ -100,9 +103,9 @@ public class RequestsController : ControllerBase
             return Forbid();
         }
 
-        if (request.State == RequestState.Closed && dto.NewState == RequestState.Open)
+        if (!_transitionPolicy.TryValidate(request, dto.NewState, User, dto.Reason, out var error))
         {
-            return BadRequest("Cannot transition from Closed to Open.");
+            return BadRequest(error);
         }
 
         var oldState = request.State;
@@ -115,7 +118,7 @@ public class RequestsController : ControllerBase
             NewState = request.State,
             ChangedAt = DateTime.UtcNow,
             ChangedBy = User.Identity?.Name ?? "Anonymous",
-            Reason = dto.Reason
+            Reason = string.IsNullOrWhiteSpace(dto.Reason) ? null : dto.Reason.Trim()
         });
 
         await _context.SaveChangesAsync();
