@@ -47,6 +47,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAccessControlService, AccessControlService>();
 builder.Services.AddScoped<CategoryValidationContext>();
+builder.Services.AddScoped<IRequestStateObserver, LogRequestStateObserver>();
 builder.Services.AddScoped<RequestStateNotifier>();
 
 var app = builder.Build();
