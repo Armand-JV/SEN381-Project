@@ -15,7 +15,7 @@ public class Request
     public DateTime CreatedAt { get; set; }
     public string RequesterId { get; set; } = string.Empty;
     public string? AssigneeId { get; set; }
-    
+
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<StatusHistory> History { get; set; } = new List<StatusHistory>();
 }

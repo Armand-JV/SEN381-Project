@@ -24,14 +24,20 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     public async Task UpdateState_ClosedToOpen_ReturnsBadRequest()
     {
         // Arrange
-        var client = _factory.CreateClient().AsStaff();
-        var db = _factory.CreateDbContext();
+        const string requesterId = "requester-1";
+        var client = _factory.CreateClient().AsStaff(requesterId);
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
 
-        var category = new Category { Name = "TestCategory" };
-        db.Categories.Add(category);
-        await db.SaveChangesAsync();
-
-        var request = new Request { CategoryId = category.Id, Title = "Title", Description = "Desc", State = RequestState.Closed };
+        var request = new Request
+        {
+            CategoryId = 1,
+            CreatedAt = DateTime.UtcNow,
+            Title = "Title",
+            Description = "Desc",
+            RequesterId = requesterId,
+            State = RequestState.Closed
+        };
         db.Requests.Add(request);
         await db.SaveChangesAsync();
 

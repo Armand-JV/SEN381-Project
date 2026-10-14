@@ -1,61 +1,75 @@
-using System.Linq;
 using CivicConnect.Web;
-using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CivicConnect.Tests;
 
 /// <summary>
-/// Custom <see cref="WebApplicationFactory{TProgram}"/> used by integration tests.
-///
-/// Swaps the production Npgsql registration for an EF Core in-memory database so the
-/// suite is hermetic and runs without a network dependency while still exercising the
-/// real MVC pipeline, routing, controller construction and middleware.
+/// Uses PostgreSQL when CI supplies a connection string; otherwise uses an in-memory
+/// database so local controller tests stay hermetic.
 /// </summary>
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private const string CiDatabaseName = "civicconnect_ci";
     private const string InMemoryDatabaseName = "CivicConnectTest";
+    private readonly bool _usePostgres = !string.IsNullOrWhiteSpace(
+        Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        if (!_usePostgres && Environment.GetEnvironmentVariable("CI") == "true")
+        {
+            throw new InvalidOperationException("CI requires ConnectionStrings__DefaultConnection.");
+        }
+
         builder.ConfigureServices(services =>
         {
-            // Remove the production DbContext registrations (Npgsql).
-            var descriptor = services.FirstOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<CivicConnectDbContext>));
-            if (descriptor != null)
-                services.Remove(descriptor);
-
-            // Add the in-memory replacement.
+            services.RemoveAll<DbContextOptions<CivicConnectDbContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<CivicConnectDbContext>>();
             services.AddDbContext<CivicConnectDbContext>(options =>
-                options.UseInMemoryDatabase(InMemoryDatabaseName));
+            {
+                if (_usePostgres)
+                {
+                    options.UseNpgsql(Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection"));
+                }
+                else
+                {
+                    options.UseInMemoryDatabase(InMemoryDatabaseName);
+                }
+            });
+
+            services.AddAuthentication(TestAuthenticationHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                    TestAuthenticationHandler.SchemeName, null);
         });
 
         builder.UseEnvironment("Testing");
     }
 
-    /// <summary>
-    /// Returns a scoped <see cref="CivicConnectDbContext"/> backed by the test in-memory
-    /// database, useful for seeding data or asserting persisted state.
-    /// </summary>
-    public CivicConnectDbContext CreateDbContext()
-    {
-        var scope = Services.CreateScope();
-        return scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
-    }
-
-    /// <summary>
-    /// Deletes and re-creates the in-memory database so each test starts from a known state.
-    /// </summary>
     public void ResetDatabase()
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
-        db.Database.EnsureDeleted();
-        db.Database.EnsureCreated();
+
+        if (!_usePostgres)
+        {
+            db.Database.EnsureDeleted();
+            db.Database.EnsureCreated();
+            return;
+        }
+
+        if (!string.Equals(db.Database.GetDbConnection().Database, CiDatabaseName, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Refusing to reset non-CI database '{db.Database.GetDbConnection().Database}'.");
+        }
+
+        db.Requests.ExecuteDelete();
     }
 }

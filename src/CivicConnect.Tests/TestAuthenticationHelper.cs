@@ -17,15 +17,8 @@ namespace CivicConnect.Tests;
 /// <summary>
 /// Test-authentication helper.
 ///
-/// The production application has no auth middleware wired up yet (NFR-017 is a future
-/// work item), so this helper does not forge real tokens. Instead it exposes the three
-/// auth roles the codebase already models (<see cref="TestRole"/>) and provides:
-///   - <see cref="WithRole"/> to stamp a role onto an <see cref="HttpClient"/> via a
-///     request header the application can read when auth is implemented.
-///   - <see cref="AsRequester"/>, <see cref="AsStaff"/>, <see cref="AsManager"/> as the
-///     ready-made role presets used by the black-box and negative-behaviour suites.
-///
-/// When the team lands real authentication this helper is the single place to update.
+/// Supplies role and user headers consumed only by TestAuthenticationHandler in the
+/// test host. Production JWT validation is not exercised by these controller tests.
 /// </summary>
 public static class TestAuthenticationHelper
 {
