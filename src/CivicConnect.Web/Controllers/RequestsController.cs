@@ -107,6 +107,7 @@ public class RequestsController : ControllerBase
 
         var oldState = request.State;
         request.State = dto.NewState;
+        var actor = User.Identity?.Name ?? "Anonymous";
 
         _context.StatusHistories.Add(new StatusHistory
         {
@@ -114,8 +115,21 @@ public class RequestsController : ControllerBase
             PreviousState = oldState,
             NewState = request.State,
             ChangedAt = DateTime.UtcNow,
-            ChangedBy = User.Identity?.Name ?? "Anonymous",
+            ChangedBy = actor,
             Reason = dto.Reason
+        });
+
+        // NFR-020 (Issue #35): append-only audit entry in the same transaction.
+        _context.AuditLogs.Add(new AuditLog
+        {
+            Actor = actor,
+            Action = "StateChanged",
+            EntityType = nameof(Request),
+            EntityId = request.Id,
+            BeforeSummary = oldState.ToString(),
+            AfterSummary = request.State.ToString(),
+            Timestamp = DateTime.UtcNow,
+            CorrelationId = Guid.NewGuid().ToString()
         });
 
         await _context.SaveChangesAsync();

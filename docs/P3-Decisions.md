@@ -96,20 +96,28 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 
 - **Date:** 2026-10-14
 - **Issue:** [#35](https://github.com/Armand-JV/SEN381-Project/issues/35)
-- **Decided by:** P3 (user decision on batching/role; details pending)
-- **Status:** Decided to build; details pending
+- **Decided by:** P3 (user decisions, asked explicitly per workflow)
+- **Status:** Implemented on `feature/m3-p3-phase2` (tests green; migration NOT applied to shared DB — awaiting user call)
 
 ### Context
 - `StatusHistory` is requester-facing; issue asks for separate append-only `AuditLog` (actor, action, entity type/id, before/after summary, timestamp, correlation id) + migration, writes on state changes/assignment/role-protected actions, Manager-only read, no update/delete path.
 - M2 ADR-004/005: audit written in same transaction, synchronous Observer.
 
-### Decisions so far
-- Manager read = `Admin` role (see batch strategy).
+### Decisions (user, 2026-10-14)
+- Manager read = `Admin` OR `Manager` role (same rule as #32).
+- Write path = direct `DbContext` write before `SaveChanges` (same transaction, ADR-004). Observer path rejected (runs after commit, DEF-006).
 - Table ships in the single combined migration with #36 indexes.
+- v1 triggers: state changes now; assignment wiring deferred — no assign endpoint exists yet (P2 FR-008 pending). Hook it up when FR-008 lands.
 
-### Pending decisions (to ask)
-- Write path: direct `DbContext` write in same `SaveChanges` transaction vs via `RequestStateNotifier` observer.
-- Exact triggering actions for v1 (state changes minimum; assignment + others?).
+### Implementation
+- `CivicConnect.Domain/Entities/AuditLog.cs` (new): `Actor, Action, EntityType, EntityId, BeforeSummary, AfterSummary, Timestamp, CorrelationId`.
+- `RequestsController.UpdateState`: appends `Action="StateChanged"` entry (before/after state names, fresh `CorrelationId`) in the same `SaveChanges`.
+- `Controllers/AuditController.cs` (new): `GET api/audit?entityType&entityId`, Admin/Manager only, `Take(200)`, newest first. No POST/PUT/DELETE exists.
+
+### Verification (2026-10-14)
+- `AuditLogTests` (2 tests): state change → exactly one entry with actor/action/before/after/correlation; manager reads, requester gets `Forbid`. `dotnet test --filter "AuditLogTests|DashboardSummaryTests"`: 5/5 pass.
+- Migration `20261014131923_M3P3_AuditLog_And_QueryIndexes`: 1 `CreateTable` + 8 `CreateIndex`; `has-pending-model-changes` clean; `db_schema.sql` regenerated idempotent (75 → 187 lines).
+- Live against shared DB: NOT run — table doesn't exist there until `dotnet ef database update` is applied (shared-state change, needs user go-ahead).
 
 ---
 
