@@ -13,7 +13,7 @@ apply it myself since the database is yours.
 
 ## What it is
 
-- **Migration:** `20261014131923_M3P3_AuditLog_And_QueryIndexes`
+- **Migration:** `20261014145832_M3P3_AuditLog_And_QueryIndexes` (re-based on merged `main`; supersedes the earlier `20261014131923` file)
 - **Branch:** `feature/m3-p3-phase2` (3 commits on top of `origin/main`: #21 API-only fix, #32 dashboard, #35 audit + #36 indexes)
 - **Covers issues:** #35 (NFR-020 audit trail) + #36 (dashboard/queue indexes)
 
@@ -43,7 +43,16 @@ SELECT indexname FROM pg_indexes WHERE tablename IN ('Requests', 'AuditLogs') OR
 SELECT "MigrationId" FROM "__EFMigrationsHistory" ORDER BY 1;
 ```
 Expect the `AuditLogs` table, the 8 indexes above, and a
-`20261014131923_M3P3_AuditLog_And_QueryIndexes` row in the history table.
+`20261014145832_M3P3_AuditLog_And_QueryIndexes` row in the history table.
+
+> ⚠️ Known blocker (Armand's call): `main` contains TWO migrations that create the
+> same `AuditEntries` table (`20261001000000_AddAuditEntries` and
+> `20261013145559_AddAuditEntriesTable`), but only the second is recorded in the
+> shared DB's history. A plain `dotnet ef database update` will fail on the first
+> with `relation "AuditEntries" already exists` before reaching ours. Fix options:
+> (a) mark `20261001000000` as applied without running it (insert into
+> `__EFMigrationsHistory` after confirming the table matches), or (b) delete the
+> redundant migration file. Either way, please decide — I did not touch your files.
 
 Smoke test (needs an Admin JWT from `GET /api/testauth/token/{user}?role=Admin`):
 - `PUT /api/requests/{id}/state` → 200, then `GET /api/audit?entityType=Request&entityId={id}` → 200 with exactly one new `StateChanged` entry.
