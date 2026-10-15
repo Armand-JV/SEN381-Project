@@ -50,4 +50,13 @@ Rejected/rewritten this session: none.
 | 2026-10-15 | Scratch-cluster approach + TC-P-01 execution (#63) | AI built the isolated cluster, restored the dump, seeded, ran load, interpreted results | Confirmed 2026-10-15: I approved the approach; accept the PASS verdict and stated limits |
 | 2026-10-15 | `scripts/staging-smoke.ps1` (#80) | AI wrote the smoke workflow at my go-ahead; verified live SMOKE PASS | Confirmed 2026-10-15: I directed and accept it |
 
+## Phase 5 continued session (2026-10-15, branch `feature/m3-p3-phase5`)
+
+| Date | Artefact | AI use | Human verification |
+|---|---|---|---|
+| 2026-10-15 | `/` yielded to React SPA + #21 addendum | AI implemented the removal and verified live; decision and rationale by author | Confirmed 2026-10-15: I chose to yield to the merged SPA direction |
+| 2026-10-15 | `wwwroot/.keep` restore + rebase verifications (#134 fallout) | AI diagnosed the `DirectoryNotFoundException` root cause and re-verified gates | Confirmed 2026-10-15: I reviewed the diagnosis and the green gates |
+| 2026-10-15 | `scripts/staging-e2e.ps1` (#59) + minter-pattern fixes | AI wrote the staging journey and fixed the TestAuth-outside-Development flaw in both scripts; verified STAGING-E2E PASS | Confirmed 2026-10-15: I directed the work and accept the PASS result |
+| 2026-10-15 | `Dockerfile`, `docker-compose.staging.yml`, `.dockerignore`, #78 procedure (#77/#78) | AI wrote all files from the approved staging direction; bundle vehicle per author decision | Confirmed 2026-10-15: I approved the approach; compose-up verification pending a Docker host |
+
 Rejected/rewritten this session: none.
