@@ -288,6 +288,19 @@ public class RequestsController : ControllerBase
             Reason = dto.Reason
         });
 
+        // NFR-020 (Issue #35): append-only audit entry in the same transaction.
+        _context.AuditLogs.Add(new AuditLog
+        {
+            Actor = actor,
+            Action = "StateChanged",
+            EntityType = nameof(Request),
+            EntityId = request.Id,
+            BeforeSummary = oldState.ToString(),
+            AfterSummary = request.State.ToString(),
+            Timestamp = DateTime.UtcNow,
+            CorrelationId = Guid.NewGuid().ToString()
+        });
+
         await _context.SaveChangesAsync();
 
         // Notify observers (Design Problem 1: Observer)

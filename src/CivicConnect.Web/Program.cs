@@ -1,9 +1,9 @@
 using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
 using CivicConnect.Application.Services;
+using CivicConnect.Web.Authentication;
 using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
-using CivicConnect.Web.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -31,6 +31,7 @@ builder.Services.AddDbContext<CivicConnectDbContext>(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddProblemDetails();
 
 // ponytail: local demo identities only; replace with a real identity provider before release.
 builder.Services.AddAuthentication(options =>
@@ -67,6 +68,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAccessControlService, AccessControlService>();
 builder.Services.AddScoped<CategoryValidationContext>();
+builder.Services.AddScoped<ICategoryValidationStrategy, Category1ValidationStrategy>();
 builder.Services.AddScoped<IRequestStateObserver, LogRequestStateObserver>();
 builder.Services.AddScoped<RequestStateNotifier>();
 
@@ -75,7 +77,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler();
     app.UseHsts();
 }
 else
