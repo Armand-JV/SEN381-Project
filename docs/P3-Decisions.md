@@ -107,7 +107,8 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - **Date:** 2026-10-14
 - **Issue:** [#35](https://github.com/Armand-JV/SEN381-Project/issues/35)
 - **Decided by:** P3 (user decisions, asked explicitly per workflow)
-- **Status:** Implemented on `feature/m3-p3-phase2` (tests green; migration NOT applied to shared DB — awaiting user call)
+- **Status:** Implemented, migrated and live-verified on the shared DB 2026-10-14
+  (branch `feature/m3-p3-phase2`, merged to `main` as PR #129)
 
 ### Context
 - `StatusHistory` is requester-facing; issue asks for separate append-only `AuditLog` (actor, action, entity type/id, before/after summary, timestamp, correlation id) + migration, writes on state changes/assignment/role-protected actions, Manager-only read, no update/delete path.
@@ -124,10 +125,10 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - `RequestsController.UpdateState`: appends `Action="StateChanged"` entry (before/after state names, fresh `CorrelationId`) in the same `SaveChanges`.
 - `Controllers/AuditController.cs` (new): `GET api/audit?entityType&entityId`, Admin/Manager only, `Take(200)`, newest first. No POST/PUT/DELETE exists.
 
-### Verification (2026-10-14)
+### Verification (2026-10-14, applied + live-verified same day)
 - `AuditLogTests` (2 tests): state change → exactly one entry with actor/action/before/after/correlation; manager reads, requester gets `Forbid`. `dotnet test --filter "AuditLogTests|DashboardSummaryTests"`: 5/5 pass.
-- Migration `20261014131923_M3P3_AuditLog_And_QueryIndexes`: 1 `CreateTable` + 8 `CreateIndex`; `has-pending-model-changes` clean; `db_schema.sql` regenerated idempotent (75 → 187 lines).
-- Live against shared DB: NOT run — table doesn't exist there until `dotnet ef database update` is applied (shared-state change, needs user go-ahead).
+- Migration `M3P3AuditLogAndQueryIndexes` (class renamed CA1707-compliant): 1 `CreateTable` + 8 `CreateIndex`; `has-pending-model-changes` clean; `db_schema.sql` regenerated idempotent.
+- Shared DB: `SeedRequestTwo` baselined as applied (PKs occupied by live rows, live data kept); our migration applied clean. Live (MANAGER JWT): assign 200, state change 200, audit read returns exactly the new `StateChanged` row.
 
 ---
 
@@ -135,13 +136,51 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 
 - **Date:** 2026-10-14
 - **Issue:** [#36](https://github.com/Armand-JV/SEN381-Project/issues/36)
-- **Decided by:** P3 (pending index list)
-- **Status:** Decided to build; index list pending
+- **Decided by:** P3 (user decisions, 2026-10-14)
+- **Status:** Implemented, migrated and live-verified (merged to `main` as PR #129)
 
 ### Context
 - Model only has FK/PK indexes. Dashboard/queue filters hit `State`, `RequesterId`, `AssigneeId`, `CreatedAt` (`Request.cs`, `CivicConnectDbContext.cs`).
 - Must follow migration rule M3-GOV-04 (#74, closed) and regenerate `db_schema.sql`.
 
-### Pending decisions (to ask)
-- Exact index set (single-column vs composite, e.g. `(State, CategoryId)`, `(AssigneeId, State)`, `(RequesterId, CreatedAt)`).
-- Before/after query evidence capture for M3-PERF.
+### Decisions (user, 2026-10-14)
+- Index set: 4 singles (`State`, `RequesterId`, `AssigneeId`, `CreatedAt`) + 2 composites (`State,CategoryId`, `AssigneeId,State`), plus 2 audit read-path indexes (`EntityType,EntityId`, `Timestamp`).
+- Single combined migration with #35 (`M3P3AuditLogAndQueryIndexes`).
+
+### Verification
+- `has-pending-model-changes` clean; applied to shared DB 2026-10-14; all 8 new indexes confirmed in `pg_indexes`.
+- Before/after query evidence: deferred to M3-PERF-03 execution.
+
+---
+
+## P3 Phase 3 batch (Issues #42, #101, #61, #75) - one PR
+
+- **Date:** 2026-10-14
+- **Decided by:** P3 (user decision)
+- Branch `feature/m3-p3-phase3` from current `main`; one PR on completion.
+  #33 (FR-015) and #34 (FR-016) excluded: no acceptance criteria in the RTM (P1 owns it).
+
+---
+
+## M3-PERF-01 (Issue #61) - Performance operation, target and workload
+
+- **Date:** 2026-10-14
+- **Issue:** [#61](https://github.com/Armand-JV/SEN381-Project/issues/61)
+- **Decided by:** P3 (user decisions, asked explicitly per workflow)
+- **Status:** Plan recorded; execution in M3-PERF-03
+
+### Decisions (user, 2026-10-14)
+- **Operation:** `GET /api/reports/requests-summary` (filtered + unfiltered). Rationale: FR-014 names it performance-sensitive; NFR-024 (clarified by CR-001: at least 95% of regular operations within 3s under expected load) applies directly; the fresh #36 indexes give a before/after story.
+- **Tool:** NBomber (.NET-native via NuGet, version-pinned, CI-runnable; no extra installs).
+- **Workload:** small - 10 virtual users, 2 minutes steady (plus warm-up excluded), 1,000 seeded requests across categories/states. Detailed seed set built in M3-PERF-02.
+- **Target:** p95 response time within 3s, zero errors; anything else fails.
+- **Environment:** local app + local/disposable PostgreSQL. Never the shared remote DB.
+
+### Why small and local (user's words: for reliability and scale)
+- Reliability: controlled, repeatable runs; same data, same host, comparable numbers across runs (including the before/after index comparison).
+- Scale honesty: a small local workload cannot disrupt the team's shared database or anyone's demo, and matches the M2 single-instance assumption - with the limitation stated plainly (see below).
+
+### What this does NOT prove
+- Production behavior (different host, data volume, network).
+- Concurrent-write contention (read-only workload).
+- Behavior beyond 10 users / 1k rows (that is M3-PERF-03 interpretation territory, not this plan).
