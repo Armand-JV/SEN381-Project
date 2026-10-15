@@ -15,10 +15,7 @@ using Xunit;
 namespace CivicConnect.Tests;
 
 /// <summary>
-/// Test-authentication helper.
-///
-/// Supplies role and user headers consumed only by TestAuthenticationHandler in the
-/// test host. Production JWT validation is not exercised by these controller tests.
+/// Supplies role and user headers consumed by the test-only authentication handler.
 /// </summary>
 public static class TestAuthenticationHelper
 {
@@ -34,8 +31,7 @@ public static class TestAuthenticationHelper
     }
 
     /// <summary>
-    /// Stamps the test role and user id onto <paramref name="client"/>. Callers can also
-    /// supply a raw <see cref="AuthenticationScheme"/> (e.g. "Bearer") for future use.
+    /// Stamps the test role and user ID onto <paramref name="client"/>.
     /// </summary>
     public static HttpClient WithRole(this HttpClient client, TestRole role, string? userId = null)
     {

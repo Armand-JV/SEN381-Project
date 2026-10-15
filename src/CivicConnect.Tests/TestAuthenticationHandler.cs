@@ -1,15 +1,14 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace CivicConnect.Tests;
 
 /// <summary>
-/// Replaces JWT bearer authentication in integration tests. Reads the test-only
-/// <see cref="TestAuthenticationHelper.RoleHeaderName"/> header and maps it to a role claim.
+/// Replaces JWT bearer authentication in integration tests. Reads test-only role and user
+/// headers and maps them to an authenticated principal.
 /// </summary>
 public sealed class TestAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
@@ -31,10 +30,16 @@ public sealed class TestAuthenticationHandler : AuthenticationHandler<Authentica
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
+        var normalizedRole = role.ToString().ToUpperInvariant();
+        if (normalizedRole == "ANONYMOUS")
+        {
+            return Task.FromResult(AuthenticateResult.NoResult());
+        }
+
         var userId = Request.Headers[TestAuthenticationHelper.UserHeaderName].ToString();
         var claims = new List<Claim>
         {
-            new(ClaimTypes.Role, role.ToString())
+            new(ClaimTypes.Role, normalizedRole)
         };
         if (!string.IsNullOrWhiteSpace(userId))
         {
@@ -42,7 +47,8 @@ public sealed class TestAuthenticationHandler : AuthenticationHandler<Authentica
             claims.Add(new Claim(ClaimTypes.Name, userId));
         }
 
-        var identity = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));
-        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(identity, SchemeName)));
+        var identity = new ClaimsIdentity(claims, SchemeName);
+        return Task.FromResult(AuthenticateResult.Success(
+            new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName)));
     }
 }

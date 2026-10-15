@@ -26,9 +26,81 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     [Fact]
     public async Task UpdateState_ClosedToOpen_ReturnsBadRequest()
     {
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
-        var category = new Category { Name = "TestCategory" };
+        var client = _factory.CreateClient().AsStaff("staff1");
+        var request = await SeedRequest(RequestState.Closed, requesterId: "user1", assigneeId: "staff1");
+
+        var response = await client.PutAsJsonAsync($"/api/requests/{request.Id}/state",
+            new UpdateStateDto { NewState = RequestState.Open, Reason = "Should fail" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(RequestState.Rejected)]
+    [InlineData(RequestState.Cancelled)]
+    [InlineData(RequestState.Closed)]
+    public async Task UpdateState_TerminalStateWithReason_PersistsHistory(RequestState terminalState)
+    {
+        var client = _factory.CreateClient().AsStaff("staff1");
+        var sourceState = terminalState == RequestState.Closed ? RequestState.Resolved : RequestState.Open;
+        var request = await SeedRequest(sourceState, requesterId: "user1", assigneeId: "staff1");
+
+        var response = await client.PutAsJsonAsync($"/api/requests/{request.Id}/state",
+            new UpdateStateDto { NewState = terminalState, Reason = "Completed after review" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var db = _factory.CreateDbContext();
+        var history = db.StatusHistories.Single(h => h.RequestId == request.Id);
+        Assert.Equal(terminalState, history.NewState);
+        Assert.Equal("Completed after review", history.Reason);
+    }
+
+    [Theory]
+    [InlineData(RequestState.Rejected)]
+    [InlineData(RequestState.Cancelled)]
+    [InlineData(RequestState.Closed)]
+    public async Task UpdateState_TerminalStateWithoutReason_ReturnsBadRequest(RequestState terminalState)
+    {
+        var client = _factory.CreateClient().AsStaff("staff1");
+        var sourceState = terminalState == RequestState.Closed ? RequestState.Resolved : RequestState.Open;
+        var request = await SeedRequest(sourceState, requesterId: "user1", assigneeId: "staff1");
+
+        var response = await client.PutAsJsonAsync($"/api/requests/{request.Id}/state",
+            new UpdateStateDto { NewState = terminalState, Reason = "  " });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(RequestState.Closed)]
+    [InlineData(RequestState.Cancelled)]
+    [InlineData(RequestState.Rejected)]
+    public async Task UpdateState_FromAnyTerminalState_ReturnsBadRequest(RequestState sourceState)
+    {
+        var client = _factory.CreateClient().AsStaff("staff1");
+        var request = await SeedRequest(sourceState, requesterId: "user1", assigneeId: "staff1");
+
+        var response = await client.PutAsJsonAsync($"/api/requests/{request.Id}/state",
+            new UpdateStateDto { NewState = RequestState.Open, Reason = "Should fail" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetRequest_StaffOutsideAssignment_ReturnsForbidden()
+    {
+        var client = _factory.CreateClient().AsStaff("staff2");
+        var request = await SeedRequest(RequestState.Assigned, requesterId: "user1", assigneeId: "staff1");
+
+        var response = await client.GetAsync($"/api/requests/{request.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    private async Task<Request> SeedRequest(RequestState state, string requesterId, string? assigneeId)
+    {
+        using var db = _factory.CreateDbContext();
+        var category = new Category { Name = $"Category-{Guid.NewGuid()}" };
         db.Categories.Add(category);
         await db.SaveChangesAsync();
 
@@ -37,18 +109,13 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
             CategoryId = category.Id,
             Title = "Title",
             Description = "Desc",
-            State = RequestState.Closed,
-            RequesterId = "alice",
-            AssigneeId = "staff-1"
+            State = state,
+            RequesterId = requesterId,
+            AssigneeId = assigneeId
         };
         db.Requests.Add(request);
         await db.SaveChangesAsync();
-
-        var response = await _factory.CreateClient().AsStaff("staff-1").PutAsJsonAsync(
-            $"/api/requests/{request.Id}/state",
-            new UpdateStateDto { NewState = RequestState.Open, Reason = "Reopen" });
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        return request;
     }
 
     [Fact]
@@ -508,6 +575,13 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
             IsInternal = true
         });
         await db.SaveChangesAsync();
+
+        using (var assignmentScope = _factory.Services.CreateScope())
+        {
+            var assignmentDb = assignmentScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
+            assignmentDb.Requests.Single(item => item.Id == 2).AssigneeId = "staff-1";
+            await assignmentDb.SaveChangesAsync();
+        }
 
         var request = await _factory.CreateClient().AsStaff("staff-1")
             .GetFromJsonAsync<Request>("/api/requests/2");
