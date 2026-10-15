@@ -55,6 +55,50 @@ namespace CivicConnect.Web.Migrations
                     b.ToTable("AuditEntries");
                 });
 
+            modelBuilder.Entity("CivicConnect.Domain.Entities.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("AfterSummary")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BeforeSummary")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CorrelationId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("EntityId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs");
+                });
+
             modelBuilder.Entity("CivicConnect.Domain.Entities.Category", b =>
                 {
                     b.Property<int>("Id")
@@ -173,7 +217,19 @@ namespace CivicConnect.Web.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AssigneeId");
+
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("RequesterId");
+
+                    b.HasIndex("State");
+
+                    b.HasIndex("AssigneeId", "State");
+
+                    b.HasIndex("State", "CategoryId");
 
                     b.ToTable("Requests");
 
