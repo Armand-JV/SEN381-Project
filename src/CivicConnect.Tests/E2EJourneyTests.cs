@@ -75,4 +75,59 @@ public class E2EJourneyTests : IClassFixture<TestWebApplicationFactory>
     {
         public int Id { get; set; }
     }
+
+    // TC-S-02 (M3-TEST-14, Issue #58): resolved request -> feedback -> dashboard reflects it.
+    [Fact]
+    public async Task ResolvedFeedback_DashboardReflectsIt()
+    {
+        var requester = _factory.CreateClient().AsRequester("req-2");
+        var staff = _factory.CreateClient().AsStaff("staff-2");
+        var manager = _factory.CreateClient().AsManager();
+
+        // 1-3. Submit, assign, resolve (same proven path as TC-S-01).
+        var createResponse = await requester.PostAsJsonAsync(
+            "/api/requests",
+            new CreateRequestDto { Title = "E2E feedback", Description = "TC-S-02", CategoryId = 2 });
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var created = await createResponse.Content.ReadFromJsonAsync<CreatedRequest>();
+        Assert.NotNull(created);
+
+        var assignResponse = await staff.PutAsJsonAsync(
+            $"/api/requests/{created!.Id}/assign",
+            new AssignRequestDto { AssigneeId = "staff-2", Reason = "E2E triage" });
+        Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
+
+        foreach (var next in new[] { RequestState.InProgress, RequestState.Resolved })
+        {
+            var stateResponse = await staff.PutAsJsonAsync(
+                $"/api/requests/{created.Id}/state",
+                new UpdateStateDto { NewState = next, Reason = "E2E step" });
+            Assert.Equal(HttpStatusCode.OK, stateResponse.StatusCode);
+        }
+
+        // 4. Requester submits feedback (owner only, resolved only).
+        var feedbackResponse = await requester.PostAsJsonAsync(
+            $"/api/requests/{created.Id}/feedback",
+            new { Rating = 5, Comment = "Fixed quickly, thank you." });
+        Assert.Equal(HttpStatusCode.Created, feedbackResponse.StatusCode);
+
+        // 5. Owner reads it back.
+        var feedbackGet = await requester.GetAsync($"/api/requests/{created.Id}/feedback");
+        Assert.Equal(HttpStatusCode.OK, feedbackGet.StatusCode);
+
+        // 6. Manager dashboard reflects the resolved request.
+        var summary = await manager.GetFromJsonAsync<DashboardSummaryDto>(
+            "/api/reports/requests-summary?categoryId=2");
+        Assert.NotNull(summary);
+        Assert.Equal(1, summary!.Total);
+        Assert.Equal(1, summary.ByState["Resolved"]);
+        Assert.Equal(1, summary.ByCategory["2"]);
+    }
+
+    private sealed class DashboardSummaryDto
+    {
+        public int Total { get; set; }
+        public Dictionary<string, int> ByState { get; set; } = new();
+        public Dictionary<string, int> ByCategory { get; set; } = new();
+    }
 }
