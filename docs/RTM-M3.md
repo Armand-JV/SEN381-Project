@@ -80,11 +80,15 @@ Implementation and tests land on `feature/Fr-01-to-06` (issues #15, #16, #17, #1
 - **FR-005:** history `Reason` is shown to requesters.
 - Field limits (title 200, description 2000, feedback comment 2000, rating 1–5) are recorded as the implemented contract; they are not claimed to match unverified M1 wording.
 
-## Management traceability (FR-015–FR-016, P3 Phase 6)
+## Management traceability (FR-014–FR-016, NFR-020, NFR-024 — P3, M3-RTM-04 #87)
 
-AC wording below is authored by P3 (no baseline AC existed; see `docs/P3-Decisions.md` FR-015/FR-016 sections). FR-014/NFR-020 rows follow separately under M3-RTM-04 (#87).
+FR-015/FR-016 AC wording is authored by P3 (no baseline AC existed; see `docs/P3-Decisions.md`).
+FR-014/NFR-020/NFR-024 trace to the M1 baseline via PED v2 §E (carried forward, not reassessed).
 
 | ID and requirement | Acceptance criterion | Implementation evidence | Verification evidence | Status / gap |
 |---|---|---|---|---|
+| **FR-014** Management dashboard: request counts by state/category with filters | Manager sees reconciling counts (total, by state, by category) under state/category/assignee/date filters | `ReportsController.GET requests-summary` (ADMIN/MANAGER only); query shaped to M3-DATA-01 indexes | `DashboardSummaryTests` (TC-U-06): counts reconcile, filters combine, non-manager Forbid; live 200/403/401 on shared DB | **Verified** in test host + live. Age buckets deferred by team decision. |
 | **FR-015** Management oversight: stalled list + reassign | Manager lists Open/Assigned requests at least N days old (default 7, plain age filter) and reassigns them; each reassign writes history + audit | `ManagementController`: `GET stalled`, `PUT reassign/{id}` (ADMIN/MANAGER only); transition policy; StatusHistory + `Reassigned` AuditLog in one transaction | `ManagementTests`: stalled filtering/order/guards, Open→Assigned + Assigned-stays reassign with history/audit assertions, Forbid/NotFound/BadRequest cases | **Verified** in test host. No "overdue" semantics (CR-002 open); production JWT not exercised. |
 | **FR-016** Category administration | Manager creates/renames categories; names non-empty and unique; unknown id gives 404 | `ManagementController`: `POST/PUT categories` (ADMIN/MANAGER only); no schema change | `ManagementTests`: create + duplicate-conflict + blank-reject + forbid; rename + unknown-404 | **Verified** in test host. |
+| **NFR-020** Audit trail for consequential actions | Every state change writes exactly one append-only audit entry in the same transaction; manager-only reads | `AuditLog` entity + migration `M3P3AuditLogAndQueryIndexes`; `UpdateState`/`Reassign` write `StateChanged`/`Reassigned` entries; `GET /api/audit` (ADMIN/MANAGER only, no write path) | `AuditLogTests`: exactly-one-entry, manager-read/requester-forbid; live audit read on shared DB | **Verified** in test host + live. Assignment via P2 endpoint writes the separate `AuditEntries` table (one-table decision pending). |
+| **NFR-024** Responsive everyday operations (CR-001: ≥95% within 3s) | Dashboard filtering p95 within 3s with zero errors under the defined workload | M3-DATA-01 indexes; NBomber scenario `src/CivicConnect.Perf` (10 VUs × 2 min, 1k rows, local scratch DB) | TC-P-01 run 2026-10-15: 109,525 reqs, p95 23.71ms — PASS; limits recorded in `docs/P3-Decisions.md` | **Verified** within stated limits (localhost only; no production claim). |
