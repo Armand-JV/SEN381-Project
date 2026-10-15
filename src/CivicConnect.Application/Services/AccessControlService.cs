@@ -13,8 +13,8 @@ public class AccessControlService : IAccessControlService
 {
     public bool CanAccess(ClaimsPrincipal user, Request request)
     {
-        // Admins can access everything
-        if (user.IsInRole("Admin"))
+        // Admins and managers can access everything
+        if (user.IsInRole("Admin") || user.IsInRole("MANAGER"))
         {
             return true;
         }
@@ -27,6 +27,12 @@ public class AccessControlService : IAccessControlService
         if (string.IsNullOrEmpty(userId))
         {
             userId = user.Identity?.Name;
+        }
+
+        if (user.IsInRole("STAFF"))
+        {
+            // Staff see unassigned work and their own assignments only.
+            return request.AssigneeId is null || request.AssigneeId == userId;
         }
 
         return request.RequesterId == userId;

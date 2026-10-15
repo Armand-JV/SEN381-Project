@@ -42,5 +42,5 @@ public static class RequestStateTransitionPolicy
         transitions.Contains(nextState);
 
     public static bool RequiresReason(RequestState nextState) =>
-        nextState is RequestState.Rejected or RequestState.Cancelled;
+        nextState is RequestState.Rejected or RequestState.Cancelled or RequestState.Closed;
 }

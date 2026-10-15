@@ -75,7 +75,18 @@ public class RequestsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetRequest), new { id = request.Id }, request);
+        var created = new CreatedRequestDto
+        {
+            Id = request.Id,
+            Title = request.Title,
+            Description = request.Description,
+            CategoryId = request.CategoryId,
+            RequesterId = request.RequesterId,
+            State = request.State,
+            CreatedAt = request.CreatedAt
+        };
+
+        return CreatedAtAction(nameof(GetRequest), new { id = request.Id }, created);
     }
 
     [HttpGet("{id}")]
@@ -321,6 +332,17 @@ public class CreateRequestDto
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int CategoryId { get; set; }
+}
+
+public class CreatedRequestDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int CategoryId { get; set; }
+    public string RequesterId { get; set; } = string.Empty;
+    public RequestState State { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 public class UpdateStateDto
