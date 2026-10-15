@@ -46,6 +46,11 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - Unblocks: M3-TEST-13 (TC-S-01), M3-TEST-14 (TC-S-02), M3-TEST-15 (staging run).
 - Related defects: DEF-001 (DI), DEF-004 (hardcoded identities) — E2E still depends on P2 fixes.
 
+### Addendum 2026-10-15: `/` yielded to the React SPA (user decision)
+- Premise changed: PR #134 merged a React Tier-1 SPA served from `wwwroot` with SPA fallback, so "no UI exists" is no longer true.
+- Change: removed our `GET /` → Swagger redirect; `/` now falls through to the SPA (`MapFallbackToFile`). Swagger stays the API demo path at `/swagger`; API identification at `/api/version`; E2E stays `HttpClient`-driven (TC-S-01 unaffected).
+- M2 comparison flips back in our favor: a React frontend was the M2 baseline all along (ADR-001), so the deferral deviation is retired for the Tier-1 pages.
+
 ---
 
 ## P3 Phase 2 batch strategy (Issues #21 + #32 + #35 + #36) — one PR

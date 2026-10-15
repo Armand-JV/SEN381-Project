@@ -148,13 +148,8 @@ app.MapGet("/api/version", () =>
     });
 });
 
-// M3-UI-01 (Issue #21): API-only demo path — no Razor UI.
-// Root no longer 404s: Swagger in Development, API pointer otherwise.
-app.MapGet("/", () =>
-{
-    return app.Environment.IsDevelopment()
-        ? Results.Redirect("/swagger")
-        : Results.Ok(new { service = "CivicConnect API", health = "/health", demo = "See docs/P3-Decisions.md M3-UI-01" });
-});
+// M3-UI-01 addendum (2026-10-15): the React Tier-1 SPA (PR #134) owns `/` via the
+// fallback below, so the API-only redirect is removed. Swagger remains the API demo
+// path at `/swagger`; the API pointer lives on for non-SPA contexts at `/api/version`.
 
 app.Run();
