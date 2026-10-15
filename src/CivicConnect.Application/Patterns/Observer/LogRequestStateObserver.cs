@@ -27,7 +27,7 @@ public partial class LogRequestStateObserver : IRequestStateObserver
 
     public Task OnStateChangedAsync(Request request, RequestState oldState, RequestState newState)
     {
-        // ponytail: log-based observer is best-effort only; a durable notification/outbox
+        // Note: log-based observer is best-effort only; a durable notification/outbox
         // with retry semantics can replace this when guaranteed delivery is required.
         LogStateChanged(_logger, request.Id, oldState, newState, request.RequesterId);
 

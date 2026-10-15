@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using CivicConnect.Domain.Entities;
 
@@ -19,14 +18,11 @@ public class AccessControlService : IAccessControlService
             return true;
         }
 
-        // Check if the current user is the owner of the request
-        // Using NameIdentifier (ClaimTypes.NameIdentifier) which is the standard JWT "sub"
-        var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.Identity?.Name;
 
-        // Fallback to Name if NameIdentifier is null
-        if (string.IsNullOrEmpty(userId))
+        if (request.RequesterId == userId)
         {
-            userId = user.Identity?.Name;
+            return true;
         }
 
         if (user.IsInRole("STAFF"))

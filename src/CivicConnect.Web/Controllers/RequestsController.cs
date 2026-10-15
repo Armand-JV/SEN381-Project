@@ -3,7 +3,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using CivicConnect.Application.Policies;
+using AssignedTransitionPolicy = CivicConnect.Application.Policies.RequestStateTransitionPolicy;
 using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
 using CivicConnect.Application.Services;
@@ -224,7 +224,7 @@ public class RequestsController : ControllerBase
         var request = await _context.Requests.FindAsync(id);
         if (request == null) return NotFound();
 
-        if (!RequestStateTransitionPolicy.IsAllowed(request.State, RequestState.Assigned))
+        if (!AssignedTransitionPolicy.IsAllowed(request.State, RequestState.Assigned))
         {
             return Conflict("Only open requests can be assigned.");
         }
@@ -271,14 +271,9 @@ public class RequestsController : ControllerBase
             return BadRequest("Invalid request state.");
         }
 
-        if (!RequestStateTransitionPolicy.IsAllowed(request.State, dto.NewState))
+        if (!RequestStateTransitionPolicy.TryValidate(request, dto.NewState, User, dto.Reason, out var error))
         {
-            return BadRequest($"Cannot transition from {request.State} to {dto.NewState}.");
-        }
-
-        if (RequestStateTransitionPolicy.RequiresReason(dto.NewState) && string.IsNullOrWhiteSpace(dto.Reason))
-        {
-            return BadRequest($"A reason is required when transitioning to {dto.NewState}.");
+            return BadRequest(error);
         }
 
         if (dto.NewState == RequestState.Assigned && string.IsNullOrWhiteSpace(request.AssigneeId))
@@ -297,7 +292,7 @@ public class RequestsController : ControllerBase
             NewState = request.State,
             ChangedAt = DateTime.UtcNow,
             ChangedBy = actor,
-            Reason = dto.Reason
+            Reason = string.IsNullOrWhiteSpace(dto.Reason) ? null : dto.Reason.Trim()
         });
 
         // NFR-020 (Issue #35): append-only audit entry in the same transaction.

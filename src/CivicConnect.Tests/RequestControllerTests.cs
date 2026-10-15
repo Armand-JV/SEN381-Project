@@ -707,6 +707,13 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
         });
         await db.SaveChangesAsync();
 
+        using (var assignmentScope = _factory.Services.CreateScope())
+        {
+            var assignmentDb = assignmentScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
+            assignmentDb.Requests.Single(item => item.Id == 2).AssigneeId = "staff-1";
+            await assignmentDb.SaveChangesAsync();
+        }
+
         var request = await _factory.CreateClient().AsStaff("staff-1")
             .GetFromJsonAsync<Request>("/api/requests/2");
 
