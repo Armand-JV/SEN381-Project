@@ -17,17 +17,29 @@ public class TestAuthController : ControllerBase
     [HttpGet("token/{userId}")]
     public IActionResult GenerateToken(string userId, string? role = "Requester")
     {
-        var claims = new[]
+        if (!HttpContext.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment() ||
+            !_config.GetValue<bool>("DemoAuth:Enabled"))
         {
-              new Claim(JwtRegisteredClaimNames.Sub, userId),
-              new Claim(ClaimTypes.Role, role ?? "Requester")
-          };
+            return NotFound();
+        }
+
+        role = role?.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(userId) || role is not ("REQUESTER" or "STAFF" or "MANAGER"))
+        {
+            return BadRequest("A user ID and supported role are required.");
+        }
 
         var secret = Environment.GetEnvironmentVariable("JWT_SECRET");
         if (string.IsNullOrWhiteSpace(secret))
         {
-            return Problem("JWT_SECRET is not configured.", statusCode: 500);
+            return NotFound();
         }
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.Trim()),
+            new Claim(ClaimTypes.Role, role)
+        };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

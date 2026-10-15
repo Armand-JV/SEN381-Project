@@ -17,7 +17,9 @@ public sealed class TestHeaderAuthenticationHandler : AuthenticationHandler<Auth
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Context.RequestServices.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing"))
+        var environment = Context.RequestServices.GetRequiredService<IHostEnvironment>();
+        if (!environment.IsDevelopment() ||
+            !Context.RequestServices.GetRequiredService<IConfiguration>().GetValue<bool>("DemoAuth:Enabled"))
         {
             return Task.FromResult(AuthenticateResult.NoResult());
         }
@@ -35,7 +37,12 @@ public sealed class TestHeaderAuthenticationHandler : AuthenticationHandler<Auth
         }
 
         var userId = Request.Headers["X-Test-User"].FirstOrDefault();
-        userId = string.IsNullOrWhiteSpace(userId) ? role.ToLowerInvariant() : userId.Trim();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Task.FromResult(AuthenticateResult.Fail("A test user ID is required."));
+        }
+
+        userId = userId.Trim();
 
         var claims = new[]
         {

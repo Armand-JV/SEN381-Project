@@ -1,0 +1,23 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CivicConnect.Web.Controllers;
+
+[ApiController]
+[Route("api/auth")]
+public class AuthController : ControllerBase
+{
+    [Authorize]
+    [HttpGet("session")]
+    public IActionResult GetSession()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        var role = User.FindFirstValue(ClaimTypes.Role);
+
+        return string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(role)
+            ? Unauthorized()
+            : Ok(new { userId, role });
+    }
+}
