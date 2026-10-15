@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace CivicConnect.Tests;
 
 /// <summary>
