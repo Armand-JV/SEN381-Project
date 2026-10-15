@@ -5,8 +5,8 @@ import type { UserRole } from "../api/types";
 
 const navItems: { path: string; label: string; roles: UserRole[] }[] = [
   { path: "/staff/queue", label: "Staff Queue", roles: ["Staff", "Manager"] },
-  { path: "/submit", label: "Submit Request", roles: ["Requester", "Staff", "Manager"] },
-  { path: "/my-requests", label: "My Requests", roles: ["Requester", "Staff", "Manager"] },
+  { path: "/submit", label: "Submit Request", roles: ["Requester"] },
+  { path: "/my-requests", label: "My Requests", roles: ["Requester"] },
 ];
 
 export default function Layout() {

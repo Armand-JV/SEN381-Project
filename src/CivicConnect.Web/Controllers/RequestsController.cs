@@ -40,15 +40,29 @@ public class RequestsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> CreateRequest([FromBody] CreateRequestDto dto)
     {
+        var errors = new Dictionary<string, string[]>();
+        if (string.IsNullOrWhiteSpace(dto.Title) || dto.Title.Trim().Length > 200)
+            errors["title"] = new[] { "Title is required and must be 200 characters or fewer." };
+        if (string.IsNullOrWhiteSpace(dto.Description) || dto.Description.Trim().Length > 2000)
+            errors["description"] = new[] { "Description is required and must be 2000 characters or fewer." };
+        if (dto.CategoryId <= 0)
+            errors["categoryId"] = new[] { "Category is required." };
+        if (errors.Count > 0)
+            return ValidationProblem(new ValidationProblemDetails(errors));
+
         var category = await _context.Categories.FindAsync(dto.CategoryId);
-        if (category == null) return BadRequest("Invalid category.");
+        if (category == null)
+        {
+            errors["categoryId"] = new[] { "Choose a valid category." };
+            return ValidationProblem(new ValidationProblemDetails(errors));
+        }
 
         var actor = GetActor();
 
         var request = new Request
         {
-            Title = dto.Title,
-            Description = dto.Description,
+            Title = dto.Title.Trim(),
+            Description = dto.Description.Trim(),
             CategoryId = dto.CategoryId,
             CreatedAt = DateTime.UtcNow,
             RequesterId = actor,
@@ -89,6 +103,82 @@ public class RequestsController : ControllerBase
         return CreatedAtAction(nameof(GetRequest), new { id = request.Id }, created);
     }
 
+    [HttpGet("mine")]
+    [Authorize(Roles = "REQUESTER")]
+    public async Task<ActionResult<PagedResultDto<RequesterRequestListItemDto>>> GetMyRequests(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (page < 1 || pageSize < 1 || pageSize > 100)
+        {
+            return BadRequest("Page must be at least 1 and pageSize must be between 1 and 100.");
+        }
+
+        var actor = GetActor();
+        var query = _context.Requests
+            .AsNoTracking()
+            .Where(request => request.RequesterId == actor);
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(request => request.CreatedAt)
+            .ThenByDescending(request => request.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(request => new RequesterRequestListItemDto
+            {
+                Id = request.Id,
+                Title = request.Title,
+                CategoryId = request.CategoryId,
+                CategoryName = request.Category!.Name,
+                State = request.State,
+                CreatedAt = request.CreatedAt
+            })
+            .ToListAsync();
+        foreach (var item in items)
+        {
+            item.StateName = item.State.ToString();
+        }
+
+        return Ok(new PagedResultDto<RequesterRequestListItemDto>
+        {
+            Items = items,
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        });
+    }
+
+    [HttpGet("{id}/history")]
+    [Authorize(Roles = "REQUESTER,STAFF,MANAGER")]
+    public async Task<ActionResult<IReadOnlyList<StatusHistoryDto>>> GetHistory(int id)
+    {
+        var request = await _context.Requests
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == id);
+        if (request == null) return NotFound();
+        if (!_accessControl.CanAccess(User, request)) return Forbid();
+
+        var history = await _context.StatusHistories
+            .AsNoTracking()
+            .Where(item => item.RequestId == id)
+            .OrderBy(item => item.ChangedAt)
+            .ThenBy(item => item.Id)
+            .Select(item => new StatusHistoryDto
+            {
+                Id = item.Id,
+                RequestId = item.RequestId,
+                PreviousState = item.PreviousState,
+                NewState = item.NewState,
+                ChangedAt = item.ChangedAt,
+                ChangedBy = item.ChangedBy,
+                Reason = item.Reason
+            })
+            .ToListAsync();
+
+        return Ok(history);
+    }
+
     [HttpGet("{id}")]
     [Authorize(Roles = "REQUESTER,STAFF,MANAGER")]
     public async Task<IActionResult> GetRequest(int id)
@@ -97,6 +187,7 @@ public class RequestsController : ControllerBase
             .AsNoTracking()
             .Include(r => r.Category)
             .Include(r => r.Comments)
+            .Include(r => r.Feedback)
             .FirstOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
 
@@ -107,7 +198,36 @@ public class RequestsController : ControllerBase
             request.Comments = request.Comments.Where(comment => !comment.IsInternal).ToList();
         }
 
-        return Ok(request);
+        return Ok(new RequestDetailDto
+        {
+            Id = request.Id,
+            Title = request.Title,
+            Description = request.Description,
+            CategoryId = request.CategoryId,
+            CategoryName = request.Category!.Name,
+            State = request.State,
+            CreatedAt = request.CreatedAt,
+            RequesterId = request.RequesterId,
+            AssigneeId = request.AssigneeId,
+            Feedback = request.Feedback is null ? null : new FeedbackDto
+            {
+                Id = request.Feedback.Id,
+                RequestId = request.Feedback.RequestId,
+                Rating = request.Feedback.Rating,
+                Comment = request.Feedback.Comment,
+                CreatedAt = request.Feedback.CreatedAt,
+                CreatedBy = request.Feedback.CreatedBy
+            },
+            Comments = request.Comments.Select(comment => new RequestCommentDto
+            {
+                Id = comment.Id,
+                RequestId = comment.RequestId,
+                Text = comment.Text,
+                CreatedAt = comment.CreatedAt,
+                CreatedBy = comment.CreatedBy,
+                IsInternal = comment.IsInternal
+            }).ToList()
+        });
     }
 
     [HttpPost("{id}/comments")]
@@ -347,6 +467,32 @@ public class UpdateStateDto
     public string Reason { get; set; } = string.Empty;
 }
 
+public class RequestDetailDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int CategoryId { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public RequestState State { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string RequesterId { get; set; } = string.Empty;
+    public string? AssigneeId { get; set; }
+    public IReadOnlyList<StatusHistoryDto> History { get; set; } = Array.Empty<StatusHistoryDto>();
+    public FeedbackDto? Feedback { get; set; }
+    public IReadOnlyList<RequestCommentDto> Comments { get; set; } = Array.Empty<RequestCommentDto>();
+}
+
+public class RequestCommentDto
+{
+    public int Id { get; set; }
+    public int RequestId { get; set; }
+    public string Text { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
+    public bool IsInternal { get; set; }
+}
+
 public class AddCommentDto
 {
     public string Text { get; set; } = string.Empty;
@@ -370,6 +516,28 @@ public class StaffRequestListItemDto
     public DateTime CreatedAt { get; set; }
     public string RequesterId { get; set; } = string.Empty;
     public string? AssigneeId { get; set; }
+}
+
+public class RequesterRequestListItemDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public int CategoryId { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public RequestState State { get; set; }
+    public string StateName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
+public class StatusHistoryDto
+{
+    public int Id { get; set; }
+    public int RequestId { get; set; }
+    public RequestState PreviousState { get; set; }
+    public RequestState NewState { get; set; }
+    public DateTime ChangedAt { get; set; }
+    public string ChangedBy { get; set; } = string.Empty;
+    public string? Reason { get; set; }
 }
 
 public class PagedResultDto<T>

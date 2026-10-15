@@ -80,18 +80,19 @@ export default function RequestDetailPage() {
   if (loading) return <section className="page"><p className="loading">Loading…</p></section>;
   if (!request) return <section className="page"><p className="error">{error || "Request not found."}</p><button className="btn-link" onClick={() => navigate(-1)}>Back</button></section>;
 
+  const auth = getAuth();
   const currentState = requestStateName(request.state);
-  const canManage = getAuth()?.role === "Staff" || getAuth()?.role === "Manager";
+  const canManage = auth?.role === "Staff" || auth?.role === "Manager";
   const nextStates = canManage ? allowedTransitions[currentState] : [];
   const comments = request.comments ?? [];
-  const history = request.history ?? [];
+  const canGiveFeedback = auth?.role === "Requester" && (currentState === "Resolved" || currentState === "Closed");
 
   return <section className="page">
-    <Link className="back" to="/staff/queue">← Staff queue</Link>
+    <Link className="back" to={canManage ? "/staff/queue" : "/my-requests"}>← {canManage ? "Staff queue" : "My requests"}</Link>
     <div className="page-heading"><div><h1>{request.title}</h1><p className="muted">Request #{request.id} · Submitted {new Date(request.createdAt).toLocaleString()}</p></div><span className={`badge badge-${currentState.toLowerCase()}`}>{currentState}</span></div>
     {error && <p className="error" role="alert">{error}</p>}
 
-    <article className="card"><h2>Request details</h2><dl className="details"><div><dt>Requester</dt><dd>{request.requesterId}</dd></div><div><dt>Category</dt><dd>#{request.categoryId}</dd></div><div><dt>Assignee</dt><dd>{request.assigneeId ?? "Unassigned"}</dd></div></dl><p>{request.description}</p></article>
+    <article className="card"><h2>Request details</h2><dl className="details"><div><dt>Requester</dt><dd>{request.requesterId}</dd></div><div><dt>Category</dt><dd>{request.categoryName ?? `#${request.categoryId}`}</dd></div><div><dt>Assignee</dt><dd>{request.assigneeId ?? "Unassigned"}</dd></div></dl><p>{request.description}</p></article>
 
     {canManage && <section className="card"><h2>Assign request</h2><div className="action-row"><label>Assignee ID<input value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)} placeholder="staff-1" /></label><button className="btn-primary" disabled={busy || currentState !== "Open"} onClick={assign}>Assign</button></div>{currentState !== "Open" && <p className="hint">Only Open requests can be assigned.</p>}</section>}
 
@@ -99,6 +100,12 @@ export default function RequestDetailPage() {
 
     <section className="card"><h2>Comments</h2>{comments.length ? <ul className="comments">{comments.map((item) => <li key={item.id}><div><strong>{item.createdBy}</strong> {item.isInternal && <span className="internal-flag">Internal</span>}<span className="muted"> · {new Date(item.createdAt).toLocaleString()}</span></div><p>{item.text}</p></li>)}</ul> : <p className="muted">No comments.</p>}<form onSubmit={postComment} className="comment-form"><label>New comment<textarea required value={comment} onChange={(event) => setComment(event.target.value)} rows={3} /></label><label className="check"><input type="checkbox" checked={internal} onChange={(event) => setInternal(event.target.checked)} /> Internal comment</label><button className="btn-primary" disabled={busy}>Post comment</button></form></section>
 
-    <section className="card"><h2>Status history</h2>{history.length ? <ol className="timeline">{history.map((item) => <li key={item.id}><strong>{item.previousState} → {item.newState}</strong><span className="muted"> · {item.changedBy} · {new Date(item.changedAt).toLocaleString()}</span>{item.reason && <p>Reason: {item.reason}</p>}</li>)}</ol> : <p className="muted">No history entries.</p>}<Link to={`/requests/${request.id}/history`}>Open standalone timeline</Link></section>
+    <section className="card"><h2>Status history</h2><p className="muted">Open the timeline to see every state change and reason.</p><Link to={`/requests/${request.id}/history`}>Open status timeline</Link></section>
+
+    <section className="card"><h2>Feedback</h2>
+      {request.feedback ? <div><p><strong>{request.feedback.rating} / 5</strong>{request.feedback.comment && <> — {request.feedback.comment}</>}</p><p className="muted">Submitted {new Date(request.feedback.createdAt).toLocaleString()}</p></div>
+        : canGiveFeedback ? <p>This request is {currentState.toLowerCase()}. <Link to={`/requests/${request.id}/feedback`}>Leave feedback</Link></p>
+        : <p className="muted">Feedback becomes available once the request is resolved or closed.</p>}
+    </section>
   </section>;
 }

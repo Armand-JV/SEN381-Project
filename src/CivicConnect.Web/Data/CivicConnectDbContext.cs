@@ -16,10 +16,21 @@ public class CivicConnectDbContext : DbContext
     public DbSet<StatusHistory> StatusHistories => Set<StatusHistory>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<Feedback> Feedback => Set<Feedback>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Feedback>()
+            .HasIndex(feedback => feedback.RequestId)
+            .IsUnique();
+
+        modelBuilder.Entity<Feedback>()
+            .HasOne(feedback => feedback.Request)
+            .WithOne(request => request.Feedback)
+            .HasForeignKey<Feedback>(feedback => feedback.RequestId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // M3-DATA-01 (Issue #36): indexes for dashboard and queue queries.
         modelBuilder.Entity<Request>().HasIndex(r => r.State);

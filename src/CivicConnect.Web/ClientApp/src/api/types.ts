@@ -7,7 +7,6 @@ export type RequestStateName =
   | "Cancelled"
   | "Rejected";
 
-// ASP.NET Core serializes enums as integers unless JsonStringEnumConverter is configured.
 export type RequestState = RequestStateName | number;
 
 export const requestStateName = (state: RequestState): RequestStateName =>
@@ -15,66 +14,46 @@ export const requestStateName = (state: RequestState): RequestStateName =>
     ? (["Open", "Assigned", "InProgress", "Resolved", "Closed", "Cancelled", "Rejected"] as const)[state] ?? "Open"
     : state;
 
-// Numeric enum value for JSON bodies (ASP.NET DTOs accept the default number form).
 export const requestStateValue = (state: RequestStateName): number =>
   ["Open", "Assigned", "InProgress", "Resolved", "Closed", "Cancelled", "Rejected"].indexOf(state);
 
 export type UserRole = "Requester" | "Staff" | "Manager";
 
-export interface AuthState {
-  role: UserRole;
-  userId: string;
-  token: string | null;
-}
+export interface AuthState { role: UserRole; userId: string; token: string | null; }
+
+export interface Category { id: number; name: string; description: string; }
 
 export interface RequestComment {
-  id: number;
-  requestId: number;
-  text: string;
-  createdAt: string;
-  createdBy: string;
-  isInternal: boolean;
+  id: number; requestId: number; text: string; createdAt: string; createdBy: string; isInternal: boolean;
 }
 
 export interface StatusHistory {
-  id: number;
-  requestId: number;
-  previousState: RequestState;
-  newState: RequestState;
-  changedAt: string;
-  changedBy: string;
-  reason?: string | null;
+  id: number; requestId: number; previousState: RequestState; newState: RequestState;
+  changedAt: string; changedBy: string; reason?: string | null;
+}
+
+export interface Feedback {
+  id: number; requestId: number; rating: number; comment: string; createdAt: string; createdBy: string;
 }
 
 export interface Request {
-  id: number;
-  title: string;
-  description: string;
-  categoryId: number;
-  state: RequestState;
-  createdAt: string;
-  requesterId: string;
-  assigneeId?: string | null;
-  history: StatusHistory[];
-  comments: RequestComment[];
+  id: number; title: string; description: string; categoryId: number; categoryName: string;
+  state: RequestState; createdAt: string; requesterId: string; assigneeId?: string | null;
+  comments: RequestComment[]; feedback?: Feedback | null;
 }
 
 export interface StaffRequestListItemDto {
-  id: number;
-  title: string;
-  description: string;
-  categoryId: number;
-  categoryName: string;
-  state: RequestState;
-  createdAt: string;
-  requesterId: string;
-  assigneeId?: string | null;
+  id: number; title: string; description: string; categoryId: number; categoryName: string;
+  state: RequestState; createdAt: string; requesterId: string; assigneeId?: string | null;
+}
+
+export interface RequesterRequestListItemDto {
+  id: number; title: string; categoryId: number; categoryName: string;
+  state: RequestState; stateName: string; createdAt: string;
 }
 
 export interface PagedResultDto<T> {
-  items: T[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  totalPages: number;
+  items: T[]; page: number; pageSize: number; totalCount: number; totalPages: number;
 }
+
+export interface ProblemDetails { title?: string; detail?: string; errors?: Record<string, string[]>; }
