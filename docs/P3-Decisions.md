@@ -314,3 +314,30 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - Journey: submit → assign → InProgress → Resolved → requester reads Resolved → audit shows 2 entries.
 - Latest run: `STAGING-E2E PASS: TC-S-01 green on commit ec9cb7a` (request #1010, 2 audit entries).
 - Same minter pattern retrofitted to `scripts/staging-smoke.ps1` (it had the same latent flaw).
+
+---
+
+## M3-STG-08 (Issue #82) - Environment differences
+
+- **Date:** 2026-10-15
+- **Issue:** [#82](https://github.com/Armand-JV/SEN381-Project/issues/82)
+- **Status:** Table recorded; belongs in PED s8/s10 when P1 assembles PED v3.0
+
+### Differences that could change production behaviour
+
+| Area | Dev (local) | Staging (interim, proven) | Staging (compose target) | Intended production |
+|---|---|---|---|---|
+| Hosting | `dotnet run` on dev machine | Same, `ASPNETCORE_ENVIRONMENT=Staging` | Containers (web + postgres:18), #77 | UNDECIDED (M2 deferred; single-host assumption) |
+| Database | Local PG18 or shared remote (per `.env`) | Separate scratch/seeded DB (never shared) | Compose volume `pgdata`, fresh + migrated | Unknown host/volume/backup regime |
+| Data volume | Handful of rows (+ optional 1k perf seed locally) | Same | Same | Unknown (no volume estimate exists — ASR-5 open) |
+| Swagger | On (Development) | On (explicit #76 decision) | On | Off (never Production) |
+| Secrets | `.env` file, gitignored | Env vars only (`.env.staging`, never committed) | Same via compose env | Env/secret store (no committed secrets — enforced) |
+| TLS | None (plain HTTP localhost) | None | None (compose has no TLS termination) | Expected (HSTS on for non-Development; no cert story yet) |
+| Auth users | TestAuth minting (Development + `DemoAuth:Enabled`) | Same, via throwaway minter | Same | UNDECIDED — no real IdP; JWT demo scheme only |
+| Build identity | Assembly version (+ local `GIT_SHA`) | `GIT_SHA` env = HEAD (#79, verified) | Same via compose env | Tag-based (M3-REL-05, pending) |
+
+### Links to residual risk (feeds #100)
+- Unknown production host/volume/backup → release/ops risk (P3).
+- No real IdP → any production use without auth rework is NOT READY material.
+- No TLS story below production → demo-only caveat for hosted staging.
+- Swagger intentionally on in staging (demo need) — must stay off in production.
