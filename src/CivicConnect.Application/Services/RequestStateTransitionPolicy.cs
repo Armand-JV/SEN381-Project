@@ -6,7 +6,7 @@ namespace CivicConnect.Application.Services;
 
 public sealed class RequestStateTransitionPolicy
 {
-    public bool TryValidate(Request request, RequestState newState, ClaimsPrincipal user, string? reason, out string error)
+    public static bool TryValidate(Request request, RequestState newState, ClaimsPrincipal user, string? reason, out string error)
     {
         if (IsTerminal(request.State))
         {
@@ -58,7 +58,7 @@ public sealed class RequestStateTransitionPolicy
         CanManageRequest(user) || request.RequesterId == GetUserId(user);
 
     private static bool CanManageRequest(ClaimsPrincipal user) =>
-        user.IsInRole("Admin") || user.IsInRole("Manager") || user.IsInRole("Staff");
+        user.IsInRole("ADMIN") || user.IsInRole("MANAGER") || user.IsInRole("STAFF");
 
     private static string? GetUserId(ClaimsPrincipal user) =>
         user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.Identity?.Name;

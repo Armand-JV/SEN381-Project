@@ -39,7 +39,7 @@ public sealed class TestAuthenticationHandler : AuthenticationHandler<Authentica
         var userId = Request.Headers[TestAuthenticationHelper.UserHeaderName].ToString();
         var claims = new List<Claim>
         {
-            new(ClaimTypes.Role, char.ToUpperInvariant(normalizedRole[0]) + normalizedRole[1..].ToLowerInvariant())
+            new(ClaimTypes.Role, normalizedRole)
         };
         if (!string.IsNullOrWhiteSpace(userId))
         {

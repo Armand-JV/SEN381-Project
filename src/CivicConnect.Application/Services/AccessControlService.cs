@@ -12,7 +12,7 @@ public class AccessControlService : IAccessControlService
 {
     public bool CanAccess(ClaimsPrincipal user, Request request)
     {
-        if (user.IsInRole("Admin") || user.IsInRole("Manager"))
+        if (user.IsInRole("ADMIN") || user.IsInRole("MANAGER"))
         {
             return true;
         }
@@ -24,6 +24,6 @@ public class AccessControlService : IAccessControlService
             return true;
         }
 
-        return user.IsInRole("Staff") && request.AssigneeId == userId;
+        return user.IsInRole("STAFF") && request.AssigneeId == userId;
     }
 }

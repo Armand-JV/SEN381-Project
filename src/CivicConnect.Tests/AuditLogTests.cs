@@ -64,8 +64,7 @@ public class AuditLogTests : IDisposable
             new RequestStateNotifier(
                 Enumerable.Empty<IRequestStateObserver>(),
                 NullLogger<RequestStateNotifier>.Instance),
-            new AccessControlService(),
-            new RequestStateTransitionPolicy());
+            new AccessControlService());
         SetUser(controller, name, roles);
         return controller;
     }

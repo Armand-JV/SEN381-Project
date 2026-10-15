@@ -23,20 +23,17 @@ public class RequestsController : ControllerBase
     private readonly CategoryValidationContext _validationContext;
     private readonly RequestStateNotifier _notifier;
     private readonly IAccessControlService _accessControl;
-    private readonly RequestStateTransitionPolicy _transitionPolicy;
 
     public RequestsController(
         CivicConnectDbContext context,
         CategoryValidationContext validationContext,
         RequestStateNotifier notifier,
-        IAccessControlService accessControl,
-        RequestStateTransitionPolicy transitionPolicy)
+        IAccessControlService accessControl)
     {
         _context = context;
         _validationContext = validationContext;
         _notifier = notifier;
         _accessControl = accessControl;
-        _transitionPolicy = transitionPolicy;
     }
 
     [HttpPost]
@@ -266,7 +263,7 @@ public class RequestsController : ControllerBase
             return BadRequest("Invalid request state.");
         }
 
-        if (!_transitionPolicy.TryValidate(request, dto.NewState, User, dto.Reason, out var error))
+        if (!RequestStateTransitionPolicy.TryValidate(request, dto.NewState, User, dto.Reason, out var error))
         {
             return BadRequest(error);
         }
