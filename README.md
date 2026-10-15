@@ -121,6 +121,24 @@ dotnet run --project src/CivicConnect.Web
 ```
 The backend serves both the API and the statically-built React UI.
 
+### Running staging (`ASPNETCORE_ENVIRONMENT=Staging`)
+1. Copy `.env.example` to `.env` and fill in real values. Secrets come **only** from
+   the environment (`.env` is gitignored); `appsettings.Staging.json` holds
+   non-secret settings (logging, hosts) and Swagger is enabled for Staging.
+2. Apply migrations: `dotnet ef database update` (run against the staging database).
+3. Run with the staging environment:
+   ```powershell
+   $env:ASPNETCORE_ENVIRONMENT = "Staging"
+   dotnet run --project src/CivicConnect.Web --launch-profile http
+   ```
+4. Verify: `/swagger/index.html` serves the API docs, `/health` reports database connectivity.
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_IP`, `DB_PORT`, `DB_SSLMODE` | Yes | PostgreSQL connection (no defaults committed) |
+| `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_SECRET` | Yes | JWT signing/validation |
+| `ASPNETCORE_ENVIRONMENT` | Yes | `Development`, `Staging`, or `Production` (controls Swagger + error pages) |
+
 ## Governance
 This project follows strict branch protection on `main`. Pull requests require at least two approvals. All substantive code must trace back to the PED requirements.
 

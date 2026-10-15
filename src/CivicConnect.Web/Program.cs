@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Reflection;
 using System.Text;
 
 // Load environment variables from .env if present.
@@ -80,7 +81,10 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler();
     app.UseHsts();
 }
-else
+
+// M3-STG-02 (Issue #76): Swagger serves Development and Staging (demo path);
+// never Production. No feature flag: environment membership is the switch.
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
@@ -124,5 +128,28 @@ app.MapGet("/health", async (CivicConnectDbContext db) =>
 // Keep missing API endpoints out of the SPA fallback.
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("/index.html");
+// M3-STG-05 (Issue #79): release identification. Anonymous so the assessor can
+// confirm the deployed build equals the tagged commit. CI injects GIT_SHA at build
+// time; otherwise the assembly version is reported and the commit is "unknown".
+app.MapGet("/api/version", () =>
+{
+    var assembly = Assembly.GetExecutingAssembly();
+    var informational = assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+        .InformationalVersion;
+    var version = informational ?? assembly.GetName().Version?.ToString() ?? "unknown";
+
+    return Results.Ok(new
+    {
+        service = "CivicConnect API",
+        version,
+        commit = Environment.GetEnvironmentVariable("GIT_SHA") ?? "unknown",
+        environment = app.Environment.EnvironmentName
+    });
+});
+
+// M3-UI-01 addendum (2026-10-15): the React Tier-1 SPA (PR #134) owns `/` via the
+// fallback below, so the API-only redirect is removed. Swagger remains the API demo
+// path at `/swagger`; the API pointer lives on for non-SPA contexts at `/api/version`.
 
 app.Run();

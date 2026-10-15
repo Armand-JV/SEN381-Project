@@ -46,6 +46,11 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - Unblocks: M3-TEST-13 (TC-S-01), M3-TEST-14 (TC-S-02), M3-TEST-15 (staging run).
 - Related defects: DEF-001 (DI), DEF-004 (hardcoded identities) — E2E still depends on P2 fixes.
 
+### Addendum 2026-10-15: `/` yielded to the React SPA (user decision)
+- Premise changed: PR #134 merged a React Tier-1 SPA served from `wwwroot` with SPA fallback, so "no UI exists" is no longer true.
+- Change: removed our `GET /` → Swagger redirect; `/` now falls through to the SPA (`MapFallbackToFile`). Swagger stays the API demo path at `/swagger`; API identification at `/api/version`; E2E stays `HttpClient`-driven (TC-S-01 unaffected).
+- M2 comparison flips back in our favor: a React frontend was the M2 baseline all along (ADR-001), so the deferral deviation is retired for the Tier-1 pages.
+
 ---
 
 ## P3 Phase 2 batch strategy (Issues #21 + #32 + #35 + #36) — one PR
@@ -143,6 +148,7 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - Model only has FK/PK indexes. Dashboard/queue filters hit `State`, `RequesterId`, `AssigneeId`, `CreatedAt` (`Request.cs`, `CivicConnectDbContext.cs`).
 - Must follow migration rule M3-GOV-04 (#74, closed) and regenerate `db_schema.sql`.
 
+<<<<<<< HEAD
 ### Decisions (user, 2026-10-14)
 - Index set: 4 singles (`State`, `RequesterId`, `AssigneeId`, `CreatedAt`) + 2 composites (`State,CategoryId`, `AssigneeId,State`), plus 2 audit read-path indexes (`EntityType,EntityId`, `Timestamp`).
 - Single combined migration with #35 (`M3P3AuditLogAndQueryIndexes`).
@@ -185,6 +191,17 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - Concurrent-write contention (read-only workload).
 - Behavior beyond 10 users / 1k rows (that is M3-PERF-03 interpretation territory, not this plan).
 
+### Execution TC-P-01 (M3-PERF-03 #63, run 2026-10-15)
+- Environment: local app + isolated local PostgreSQL 5433 (throwaway cluster, Armand's
+  dump restored + `seed-perf.sql` 1,000 rows). Shared DB untouched throughout.
+- Result (10 VUs x 2 min, 109,525 requests, 0 errors, ~913 RPS):
+  p50 9.45ms, p75 14.27ms, **p95 23.71ms**, p99 32.9ms, max 486ms.
+- Vs target: p95 23.71ms << 3,000ms with zero errors — **PASS** by two orders of magnitude.
+- What this does NOT prove (PED s8 limits): production behavior; write contention;
+  beyond-10-user scale; cold-start/JIT warm-up excluded by steady-state measurement.
+  Note: NBomber free license is personal-use-only messaging appeared at runtime —
+  academic use here, but flag before any organizational/commercial use.
+
 ---
 
 ## M3-STG-01 (Issue #75) - Staging approach
@@ -211,10 +228,89 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
   interim; staging Postgres (compose or local) is seeded separately - never load-test
   or experiment against shared data (ties M3-PERF-01 environment rule).
 
-### Assessor demo path (proven 2026-10-14)
+### Assessor demo path (proven 2026-10-14, updated for SPA yield 2026-10-15)
 1. Clone repo at the tagged release candidate, restore, `dotnet run` (http profile).
-2. Open `/` (redirects to `/swagger/index.html`).
+2. Open `/` for the React SPA, `/swagger/index.html` for the API.
 3. Mint role token: `GET /api/testauth/token/{user}?role=ADMIN|MANAGER|STAFF`.
 4. Authorize in Swagger (Bearer), exercise submit → assign → state → history →
    dashboard → audit journeys.
 5. `GET /health` proves DB connectivity.
+
+---
+
+## M3-STG-03 (Issue #77) - Dockerfile and compose
+
+- **Date:** 2026-10-15
+- **Issue:** [#77](https://github.com/Armand-JV/SEN381-Project/issues/77)
+- **Status:** Written, partially verified (no Docker on this machine)
+
+### What was built
+- `Dockerfile` (3 stages): Node 22 builds the Vite SPA into `wwwroot`; SDK publishes
+  the backend with that `wwwroot`; ASP.NET runtime serves it (`Staging`, port 8080).
+  `GIT_SHA` flows via environment at run time (see #79), not build args.
+- `docker-compose.staging.yml`: `db` (postgres:18, volume, `pg_isready` healthcheck)
+  + `web` (healthy-db dependency); secrets only via `.env.staging` (never committed,
+  `${VAR:?err}` guards); `DemoAuth__Enabled=false` in staging.
+- `.dockerignore`: excludes build outputs, git, secrets, and `wwwroot/*` (populated by the frontend stage).
+
+### Verified without Docker
+- `dotnet build slnx` clean (mirrors the backend stage); `npm ci` + `npm run build`
+  green locally, and the produced `wwwroot` served live: `/` returns the SPA
+  (`200`, title CivicConnect) — the #21 yield works end to end with a real build.
+- NOT verified: `docker compose up` itself. Needs a Docker host (teammate/assessor/CI)
+  before this is done-done; flagged honestly.
+
+---
+
+## M3-STG-04 (Issue #78) - Migration and seed procedure
+
+- **Date:** 2026-10-15
+- **Issue:** [#78](https://github.com/Armand-JV/SEN381-Project/issues/78)
+- **Decided by:** P3 (user decision: EF bundle over SQL script)
+- **Status:** Procedure recorded; bundle build verified, run pending scratch/staging DB
+
+### Procedure (user-approved vehicle: EF bundle)
+1. Build the bundle (verified — builds clean, no DB needed):
+   `dotnet ef migrations bundle --project src/CivicConnect.Web --output efbundle(.exe)`
+   (copy `appsettings.json` alongside it per the tooling note).
+2. Start the staging database (compose `db` service).
+3. Run `./efbundle` with the staging connection environment — applies pending migrations.
+4. Seed: rely on `HasData` categories; demo users via TestAuth require
+   `DemoAuth__Enabled=true` (staging default stays off; opt in per run as in #80).
+5. Verify: `/health` green, `__EFMigrationsHistory` contains the expected IDs.
+
+### Verification (2026-10-15, local scratch cluster — no shared data involved)
+- Fresh bundle built from current tree; applied to empty `civicconnect_empty`:
+  4 history rows, 6/6 tables present.
+- Rerun on the same DB: "No migrations were applied. The database is already up to date."
+  (idempotent — safe to re-run in pipelines).
+
+---
+
+## M3-STG-07 (Issue #81) - Health check and failure evidence
+- **Date:** 2026-10-15
+- **Issue:** [#81](https://github.com/Armand-JV/SEN381-Project/issues/81)
+- **Status:** Verified, no code change needed (`/health` with DB check already on `main`)
+
+### Evidence (2026-10-15, Staging env, `DB_IP` overridden to unroutable `192.0.2.1`)
+- Healthy baseline (earlier run): `200 {"status":"Healthy","database":"Connected"}`.
+- DB-down run: `503 {"title":"Service Unavailable","status":503,"detail":"Cannot connect to database."}`.
+- No connection strings, hosts, or credentials leak in either response (generic messages by design in `Program.cs`).
+- Unexercised path: the `catch` branch (`"Database connection error."`) triggers only when the check itself throws rather than returning false; same no-detail property holds by construction.
+
+---
+
+## M3-TEST-15 (Issue #59) - Staging E2E run
+
+- **Date:** 2026-10-15
+- **Issue:** [#59](https://github.com/Armand-JV/SEN381-Project/issues/59)
+- **Status:** Passing via `scripts/staging-e2e.ps1`; result tied to `/api/version` commit
+
+### How it runs (all verified live 2026-10-15)
+- Staging stack: app with `ASPNETCORE_ENVIRONMENT=Staging` (honest env — `--no-launch-profile`,
+  after catching that the http profile forces Development) on the isolated scratch DB.
+- Auth: TestAuth mints only in Development (controller design), so a throwaway Development
+  minter on :5288 mints REQUESTER/STAFF/MANAGER tokens (same JWT config) spent on staging.
+- Journey: submit → assign → InProgress → Resolved → requester reads Resolved → audit shows 2 entries.
+- Latest run: `STAGING-E2E PASS: TC-S-01 green on commit ec9cb7a` (request #1010, 2 audit entries).
+- Same minter pattern retrofitted to `scripts/staging-smoke.ps1` (it had the same latent flaw).

@@ -1,0 +1,13 @@
+bin/
+obj/
+out/
+.vs/
+.git/
+.gitignore
+TestResults/
+perf-reports/
+.env
+.env.staging
+src/CivicConnect.Web/ClientApp/node_modules/
+src/CivicConnect.Web/wwwroot/
+!src/CivicConnect.Web/wwwroot/.keep
