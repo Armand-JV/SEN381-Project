@@ -20,3 +20,11 @@ Rejected/rewritten AI output this session: AI suggested database changes that wo
 conflicted with pre-existing ways (Armand's `AuditEntries` design). I rejected the
 conflicting approach; this was communicated to Armand and a compromise was decided:
 one unified table to serve both use cases (see `P3-Decisions.md`).
+
+## Phase 4 session (2026-10-15, branch `feature/m3-p3-phase4`)
+
+| Date | Artefact | AI use | Human verification |
+|---|---|---|---|
+| 2026-10-15 | `docs/Tests/m3-test-05-evidence.md` (#49) | AI verified TC-U-05/TC-U-06 coverage against the tree, ran the suites, drafted the evidence record | Confirmed 2026-10-15: I directed the evidence work and accept the records as accurate |
+
+Rejected/rewritten this session: none.
