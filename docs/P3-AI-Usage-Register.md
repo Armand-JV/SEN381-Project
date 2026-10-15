@@ -60,4 +60,13 @@ Rejected/rewritten this session: none.
 | 2026-10-15 | `Dockerfile`, `docker-compose.staging.yml`, `.dockerignore`, #78 procedure (#77/#78) | AI wrote all files from the approved staging direction; bundle vehicle per author decision | Confirmed 2026-10-15: I approved the approach; compose-up verification pending a Docker host |
 | 2026-10-15 | #78 bundle run verification | AI rebuilt the bundle, applied it to an empty scratch DB (4 history rows, 6/6 tables) and confirmed idempotent rerun | Confirmed 2026-10-15: I accept the verification as stated |
 
+## Phase 6 session (2026-10-15, branch `feature/m3-p3-phase6`)
+
+| Date | Artefact | AI use | Human verification |
+|---|---|---|---|
+| 2026-10-15 | #82 env-differences table, #83 rollback dry run | AI drafted the table; ran backup/Down/Up/restore proof on scratch | Confirmed 2026-10-15: I directed the work and accept the evidence |
+| 2026-10-15 | #97 README rewrite, #87 RTM rows, #98 evidence summary | AI drafted all three from repo facts; AC/risks phrasing as found | Confirmed 2026-10-15: I reviewed each file and accept the content |
+| 2026-10-15 | #99 readiness reasoning, #100 risk rows, #93 PED sections | AI drafted reasoning/risks/sections; classification and scope calls by author | Confirmed 2026-10-15: my calls stand as recorded; drafts accepted |
+| 2026-10-15 | FR-015/016 AC + `ManagementController` + `ManagementTests` + RTM rows (#33/#34) | AI defined AC options for author choice; wrote endpoints/tests/rows from chosen scope | Confirmed 2026-10-15: I chose the scopes and accept the implementation |
+
 Rejected/rewritten this session: none.
