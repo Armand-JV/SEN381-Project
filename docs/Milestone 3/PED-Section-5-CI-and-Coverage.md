@@ -18,6 +18,12 @@ The following gaps remain open in the current evidence:
 
 These are requirement and security gaps, not defects that a line or branch percentage can close. Add targeted tests or record an explicit acceptance decision before changing their RTM status.
 
+## Findings and disposition
+
+The canonical static/security findings register is [`docs/CI/M3-CI-07-findings.md`](../CI/M3-CI-07-findings.md). It records each repository-visible finding's source tool, severity, decision, owner, and residual-risk or debt link. Accepted and open items are expanded in the [Technical Debt Register](../Technical-Debt-Register.md) and [Residual Risk Statement](../Residual-Risk-Statement.md). PED §9 provides the defect and quality interpretation: [`PED-Section-9-Defects-and-Quality.md`](PED-Section-9-Defects-and-Quality.md).
+
+Local format, vulnerability, and coverage checks are evidence for this checkout only. They do not establish hosted GitHub settings, future advisory status, production JWT behavior, or complete requirement satisfaction. Hosted CI remains pending until a real run URL and artifact are available.
+
 ## Verification evidence
 
 - Local coverage-summary self-test: passed on 2026-10-15.

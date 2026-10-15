@@ -1,0 +1,12 @@
+# Residual Risk Statement
+
+**Scope:** M3 CI and security findings. Status reflects repository evidence available on 2026-10-15; hosted settings and future advisories require reassessment.
+
+| ID | Risk / reason it remains | Current mitigation | Next action | Owner | Status |
+|---|---|---|---|---|---|
+| RR-SEC-01 | Historical database-password literal remains in Git history (DEF-005); history rewrite and credential rotation need repository-owner authorization. | Current tracked appsettings value is empty; CI uses disposable test-only credentials; finding is recorded in [TD-SEC-01](Technical-Debt-Register.md#td-sec-01). | Confirm whether the historical credential was ever valid, rotate it if needed, then decide whether policy requires coordinated history rewrite. | P2 / repository owner | Open |
+| RR-SEC-02 | NuGet advisories change after each scan, and local scan output is only a point-in-time result. | CI runs `dotnet list package --vulnerable --include-transitive` and fails on high/critical or unavailable/unparseable results; local scan reported no vulnerabilities on 2026-10-14. | Preserve the hosted CI result for each release candidate and review new advisories; enable hosted Dependabot alerts/updates if required by repository policy. | P2 / repository owner | Accepted with monitoring; linked to [TD-SEC-02](Technical-Debt-Register.md#td-sec-02). |
+| RR-SEC-03 | Secret-scanning validity checks, non-provider patterns, Dependabot alerts, and required CI status are hosted GitHub settings, not asserted by repository files. | Repository evidence records the checked state and limits; workflow has read-only contents permission and dependency scanning gate. | Capture live ruleset/security-settings evidence and enable missing protections through authorized GitHub settings changes. | P2 / repository owner | Open; repository change alone cannot close it. |
+| RR-SEC-04 | Test authentication handler proves controller authorization wiring but does not exercise production JWT issuer, audience, signature, or identity-provider behavior. | Production uses JWT bearer configuration; API tests explicitly document the test-host limitation in the RTM and PED §5. | Add production-like JWT integration evidence before release acceptance, or record explicit release acceptance in the RTM. | P2 | Open; linked to [RTM-M3 security rows](RTM-M3.md#staff-and-security-traceability). |
+
+No risk is marked closed from local coverage or a passing local test run alone.

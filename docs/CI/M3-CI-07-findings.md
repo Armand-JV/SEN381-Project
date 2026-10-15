@@ -1,38 +1,37 @@
-# CI and security findings
+# M3-CI-07 Static/security findings
 
-## Gate policy
+**Canonical register:** this file records repository-visible findings for M3-CI-07. Scan results are point-in-time evidence, not a promise that future advisories or hosted settings remain unchanged. Owners must review each disposition before release acceptance.
 
-The CI workflow (`build-and-test` in `.github/workflows/test.yml`) fails a run when any of the following occur:
+## Disposition vocabulary
 
-- restore or solution build failure;
-- EF migration failure against the service database;
-- any test failure (solution-wide, `--no-build`);
-- analyzer errors (warnings are treated as errors) or format verification failure;
-- a high or critical package vulnerability, or a vulnerability scan that is unavailable or unparseable.
-
-A failed run is not rerun until green to hide flaky behavior: the cause is identified and fixed, or explicitly recorded in this file, before rerun.
+- **Fixed:** repository change removes the finding for the stated scope.
+- **Mitigated:** controls reduce the finding, but residual exposure remains.
+- **Accepted:** team records why the finding remains and assigns follow-up in the [Residual Risk Statement](../Residual-Risk-Statement.md) or [Technical Debt Register](../Technical-Debt-Register.md).
 
 ## Findings record
 
-| Tool | Severity | Finding | Decision | Owner | Residual risk |
-| --- | --- | --- | --- | --- | --- |
-| `dotnet format` | Medium | Existing whitespace violations in `Request.cs` and `CivicConnectDbContext.cs` | Fixed | P2 | None recorded |
-| CA1707 | Warning | Underscored test method names in `CivicConnect.Tests` | Suppressed for the test assembly via `.editorconfig`; test names intentionally separate behavior, input, and expected outcome | P2 | Naming-style rule not enforced for tests |
-| CA1861 | Warning | Constant array argument in EF-generated migration `InitialCreate.cs` | Suppressed for migration files; generated migration shape kept | P2 | None recorded |
-| CA1870 | Warning | Non-cached `SearchValues` in `EnvLoader.cs` line 76 | Fixed: `line.AsSpan().IndexOfAny(':', '=')` | P2 | None recorded |
-| `dotnet list package --vulnerable --include-transitive` | Informational | No vulnerable packages reported by configured NuGet sources in the local scan on 2026-10-14 | Accepted as current scan result; CI rescans every run | P2 | Advisories change over time; scan state at CI-run time is the gate |
-| Pre-existing test defect | High | `RequestControllerTests.UpdateState_ClosedToOpen_ReturnsBadRequest` returned `Unauthorized` against the real JWT pipeline and `Forbidden` once a test scheme was registered: `AccessControlService` requires `ClaimTypes.NameIdentifier` (the JWT `sub`) that the test helper's role header never set | Fixed in test harness only: `TestAuthenticationHandler` now emits role, `sub`, and name claims from `X-Test-Role`/`X-Test-User`; test seeds the request with that `RequesterId` and uses the migrated seed Category `Id = 1` | P2 | Controller tests authenticate via `X-Test-Role`/`X-Test-User` instead of real JWTs; production JWT validation remains covered only by its own suite |
-| Controller test isolation | Medium | `RequestControllerTests` created an EF context outside a DI scope; relational provider would reject cross-scope sharing | Fixed: context obtained from an injected DI scope; `TestWebApplicationFactory.CreateDbContext` removed | P2 | None recorded |
-| DEF-005 history scan | High | Known `Password=postgres` / equivalent literal exists in historical `README.md` and `src/CivicConnect.Web/appsettings.json` blobs across repository history (first identified commit prefix `08f24e72c6b2`; full scan produced 65 commit/path hits, including repeated issue-document references) | Current tracked appsettings value is empty and CI uses disposable test-only credentials. Historical removal or credential rotation is not performed without repository-owner authorization | P2 / repository owner | Git history retains the old literal; rotate any credential that was ever valid and consider coordinated history rewrite only if team policy requires it |
-| `.gitignore` | Low | Unrelated pre-existing working-tree change (adds `/graphify-out`) on this branch | Not part of CI implementation; left untouched | P2 | None recorded |
+| ID | Tool / source | Severity | Finding | Decision | Owner | Residual risk / debt |
+|---|---|---|---|---|---|---|
+| FIND-001 | `dotnet format` | Medium | Existing whitespace violations in `Request.cs` and `CivicConnectDbContext.cs`. | Fixed | P2 | None. Verify with the repository format gate. |
+| FIND-002 | CA1707 | Warning | Underscored test method names in `CivicConnect.Tests`. | Mitigated | P2 | Test-only naming exception remains in `.editorconfig`; naming-style rule is not enforced for tests. |
+| FIND-003 | CA1861 | Warning | Constant array argument in EF-generated `InitialCreate.cs`. | Mitigated | P2 | Generated migration shape remains excepted in `.editorconfig`; no production source suppression. |
+| FIND-004 | CA1870 | Warning | Non-cached `SearchValues` in `EnvLoader.cs` line 76. | Fixed | P2 | None; replaced with `line.AsSpan().IndexOfAny(':', '=')`. |
+| FIND-005 | `dotnet list package --vulnerable --include-transitive` | Informational | No vulnerable packages reported by configured NuGet sources in local scan on 2026-10-14. | Accepted | P2 | [RR-SEC-02](../Residual-Risk-Statement.md#rr-sec-02); advisories change over time and CI rescans every run. |
+| FIND-006 | Pre-existing test defect / JWT test harness | High | `RequestControllerTests.UpdateState_ClosedToOpen_ReturnsBadRequest` returned `Unauthorized` against the real JWT pipeline and then `Forbidden` when a test scheme was registered because `AccessControlService` requires `ClaimTypes.NameIdentifier` (`sub`). | Fixed | P2 | Test harness uses `X-Test-Role`/`X-Test-User`; production JWT validation remains outside this suite. See [RR-SEC-04](../Residual-Risk-Statement.md#rr-sec-04). |
+| FIND-007 | Controller test isolation | Medium | `RequestControllerTests` created an EF context outside a DI scope; relational providers reject cross-scope sharing. | Fixed | P2 | None recorded. |
+| FIND-008 | DEF-005 history scan | High | Historical Git blobs retain a `Password=postgres` or equivalent literal; scan produced 65 commit/path hits, first identified by commit prefix `08f24e72c6b2`. | Mitigated | P2 / repository owner | [TD-SEC-01](../Technical-Debt-Register.md#td-sec-01) and [RR-SEC-01](../Residual-Risk-Statement.md#rr-sec-01); current tracked appsettings value is empty, but history remains. |
+| FIND-009 | `gh api` repository settings check, 2026-10-14 | Medium | Secret-scanning validity checks and non-provider patterns were disabled; Dependabot security alerts/auto-fix were disabled; no required-status-check rule existed in the main ruleset. | Accepted | P2 / repository owner | [RR-SEC-03](../Residual-Risk-Statement.md#rr-sec-03) and [TD-SEC-02](../Technical-Debt-Register.md#td-sec-02); hosted settings require authorized changes and live evidence. |
 
-## Repository-level (not repository-file) security settings, 2026-10-14
+## Evidence limits
 
-Checked live via `gh api`; these are external to the repository files and are reported, not asserted as changed:
+- `dotnet list package` and local self-tests do not replace hosted CI evidence. The workflow gate is defined in [`.github/workflows/test.yml`](../../.github/workflows/test.yml).
+- Coverage counts do not prove requirement satisfaction, authorization completeness, production JWT behavior, or safe failure paths. See [PED v3 §5](../Milestone%203/PED-Section-5-CI-and-Coverage.md).
+- Historical credentials are not removed or rotated by this documentation change. Coordinate any history rewrite or credential action with the repository owner.
+- Hosted GitHub settings are reported as findings, not asserted as changed by this branch.
 
-- Secret scanning: enabled; push protection: enabled; secret-scanning validity checks: disabled; non-provider patterns: disabled.
-- Dependabot security updates (auto-fix PRs): disabled. The `dependabot.yml` file in this change enables Dependabot *update* PRs for nuget and github-actions (weekly). "Dependabot alerts" (vulnerability-alerts API) reports disabled; enable it through GitHub settings, not a repository file.
-- `main` branch ruleset: two required approvals, required linear history, delete and non-fast-forward protections. **No required-status-check rule exists.** Making the CI workflow a required check requires a live ruleset/settings change (authorized); the check name must match the `build-and-test` job.
-- Blocked-PR evidence (M3-CI-03) requires a real failing run that blocks merge; not present in this change.
+## Related traceability
 
-This file records repository-visible findings only. Hosted run URLs and required-status-check state require live evidence and are not asserted here.
+- [PED v3 §5 — CI and automated verification](../Milestone%203/PED-Section-5-CI-and-Coverage.md#findings-and-disposition)
+- [PED v3 §9 — defects and quality interpretation](../Milestone%203/PED-Section-9-Defects-and-Quality.md)
+- [RTM-M3](../RTM-M3.md)
+- [M3 issue M3-CI-07](../CivicConnect_M3_Issues.md#m3-ci-07-staticsecurity-findings-log-and-handling)
