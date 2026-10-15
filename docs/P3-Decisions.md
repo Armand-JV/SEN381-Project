@@ -279,6 +279,12 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
    `DemoAuth__Enabled=true` (staging default stays off; opt in per run as in #80).
 5. Verify: `/health` green, `__EFMigrationsHistory` contains the expected IDs.
 
+### Verification (2026-10-15, local scratch cluster — no shared data involved)
+- Fresh bundle built from current tree; applied to empty `civicconnect_empty`:
+  4 history rows, 6/6 tables present.
+- Rerun on the same DB: "No migrations were applied. The database is already up to date."
+  (idempotent — safe to re-run in pipelines).
+
 ---
 
 ## M3-STG-07 (Issue #81) - Health check and failure evidence
