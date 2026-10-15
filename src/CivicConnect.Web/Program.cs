@@ -1,8 +1,10 @@
 using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
 using CivicConnect.Application.Services;
+using CivicConnect.Web.Authentication;
 using CivicConnect.Web.Configuration;
 using CivicConnect.Web.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -21,14 +23,17 @@ EnvLoader.Load(builder.Environment.ContentRootPath);
 // Register services.
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddScoped<ICategoryValidationStrategy, Category1ValidationStrategy>();
+
 builder.Services.AddDbContext<CivicConnectDbContext>(options =>
     options.UseNpgsql(
         EnvLoader.GetConnectionString(builder.Configuration)));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddProblemDetails();
 
-// JWT Authentication Configuration
+// JWT Authentication Configuration (matches origin/main).
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -48,6 +53,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAccessControlService, AccessControlService>();
 builder.Services.AddSingleton<RequestStateTransitionPolicy>();
 builder.Services.AddScoped<CategoryValidationContext>();
+builder.Services.AddScoped<ICategoryValidationStrategy, Category1ValidationStrategy>();
+builder.Services.AddScoped<IRequestStateObserver, LogRequestStateObserver>();
 builder.Services.AddScoped<RequestStateNotifier>();
 
 var app = builder.Build();
@@ -55,7 +62,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler();
     app.UseHsts();
 }
 else
@@ -71,6 +78,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+app.MapControllers();
 
 // Health check endpoint.
 app.MapGet("/health", async (CivicConnectDbContext db) =>
@@ -98,9 +106,13 @@ app.MapGet("/health", async (CivicConnectDbContext db) =>
     }
 });
 
-app.MapControllerRoute(
-        name: "default",
-        pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
+// M3-UI-01 (Issue #21): API-only demo path — no Razor UI.
+// Root no longer 404s: Swagger in Development, API pointer otherwise.
+app.MapGet("/", () =>
+{
+    return app.Environment.IsDevelopment()
+        ? Results.Redirect("/swagger")
+        : Results.Ok(new { service = "CivicConnect API", health = "/health", demo = "See docs/P3-Decisions.md M3-UI-01" });
+});
 
 app.Run();

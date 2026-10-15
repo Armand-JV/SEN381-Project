@@ -7,13 +7,12 @@ using Microsoft.Extensions.Options;
 namespace CivicConnect.Tests;
 
 /// <summary>
-/// Test-only authentication handler that translates <c>X-Test-Role</c> / <c>X-Test-User</c>
-/// headers into an authenticated principal.
+/// Replaces JWT bearer authentication in integration tests. Reads test-only role and user
+/// headers and maps them to an authenticated principal.
 /// </summary>
-public class TestAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+public sealed class TestAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
-    public const string HeaderRole = "X-Test-Role";
-    public const string HeaderUser = "X-Test-User";
+    public const string SchemeName = "TestScheme";
 
     public TestAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -25,33 +24,31 @@ public class TestAuthenticationHandler : AuthenticationHandler<AuthenticationSch
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue(HeaderRole, out var roles))
-            return Task.FromResult(AuthenticateResult.NoResult());
-
-        var role = roles.ToString().ToUpperInvariant() switch
+        if (!Request.Headers.TryGetValue(TestAuthenticationHelper.RoleHeaderName, out var role) ||
+            string.IsNullOrWhiteSpace(role))
         {
-            "REQUESTER" => "Requester",
-            "STAFF" => "Staff",
-            "MANAGER" => "Manager",
-            "ANONYMOUS" => "Anonymous",
-            _ => roles.ToString()
-        };
-        if (role == "Anonymous")
             return Task.FromResult(AuthenticateResult.NoResult());
+        }
 
-        var userId = Request.Headers.TryGetValue(HeaderUser, out var users)
-            ? users.ToString()
-            : string.Empty;
+        var normalizedRole = role.ToString().ToUpperInvariant();
+        if (normalizedRole == "ANONYMOUS")
+        {
+            return Task.FromResult(AuthenticateResult.NoResult());
+        }
 
+        var userId = Request.Headers[TestAuthenticationHelper.UserHeaderName].ToString();
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, userId ?? string.Empty),
-            new(ClaimTypes.Name, userId ?? string.Empty),
-            new(ClaimTypes.Role, role)
+            new(ClaimTypes.Role, normalizedRole)
         };
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, userId));
+            claims.Add(new Claim(ClaimTypes.Name, userId));
+        }
 
-        var identity = new ClaimsIdentity(claims, "Test");
-        var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
-        return Task.FromResult(AuthenticateResult.Success(ticket));
+        var identity = new ClaimsIdentity(claims, SchemeName);
+        return Task.FromResult(AuthenticateResult.Success(
+            new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName)));
     }
 }

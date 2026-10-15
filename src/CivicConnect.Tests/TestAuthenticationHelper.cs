@@ -15,11 +15,7 @@ using Xunit;
 namespace CivicConnect.Tests;
 
 /// <summary>
-/// Test-authentication helper.
-///
-/// Stamps role and user headers on an <see cref="HttpClient"/>. The test host's
-/// <see cref="TestAuthenticationHandler"/> converts them to an authenticated principal;
-/// production authentication remains JWT Bearer.
+/// Supplies role and user headers consumed by the test-only authentication handler.
 /// </summary>
 public static class TestAuthenticationHelper
 {
