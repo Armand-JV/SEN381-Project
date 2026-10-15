@@ -143,6 +143,7 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - Model only has FK/PK indexes. Dashboard/queue filters hit `State`, `RequesterId`, `AssigneeId`, `CreatedAt` (`Request.cs`, `CivicConnectDbContext.cs`).
 - Must follow migration rule M3-GOV-04 (#74, closed) and regenerate `db_schema.sql`.
 
+<<<<<<< HEAD
 ### Decisions (user, 2026-10-14)
 - Index set: 4 singles (`State`, `RequesterId`, `AssigneeId`, `CreatedAt`) + 2 composites (`State,CategoryId`, `AssigneeId,State`), plus 2 audit read-path indexes (`EntityType,EntityId`, `Timestamp`).
 - Single combined migration with #35 (`M3P3AuditLogAndQueryIndexes`).
@@ -218,3 +219,16 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 4. Authorize in Swagger (Bearer), exercise submit → assign → state → history →
    dashboard → audit journeys.
 5. `GET /health` proves DB connectivity.
+
+---
+
+## M3-STG-07 (Issue #81) - Health check and failure evidence
+- **Date:** 2026-10-15
+- **Issue:** [#81](https://github.com/Armand-JV/SEN381-Project/issues/81)
+- **Status:** Verified, no code change needed (`/health` with DB check already on `main`)
+
+### Evidence (2026-10-15, Staging env, `DB_IP` overridden to unroutable `192.0.2.1`)
+- Healthy baseline (earlier run): `200 {"status":"Healthy","database":"Connected"}`.
+- DB-down run: `503 {"title":"Service Unavailable","status":503,"detail":"Cannot connect to database."}`.
+- No connection strings, hosts, or credentials leak in either response (generic messages by design in `Program.cs`).
+- Unexercised path: the `catch` branch (`"Database connection error."`) triggers only when the check itself throws rather than returning false; same no-detail property holds by construction.
