@@ -3,7 +3,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using CivicConnect.Application.Policies;
+using AssignedTransitionPolicy = CivicConnect.Application.Policies.RequestStateTransitionPolicy;
 using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
 using CivicConnect.Application.Services;
@@ -75,7 +75,18 @@ public class RequestsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetRequest), new { id = request.Id }, request);
+        var created = new CreatedRequestDto
+        {
+            Id = request.Id,
+            Title = request.Title,
+            Description = request.Description,
+            CategoryId = request.CategoryId,
+            RequesterId = request.RequesterId,
+            State = request.State,
+            CreatedAt = request.CreatedAt
+        };
+
+        return CreatedAtAction(nameof(GetRequest), new { id = request.Id }, created);
     }
 
     [HttpGet("{id}")]
@@ -89,9 +100,10 @@ public class RequestsController : ControllerBase
             .FirstOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
 
+        if (!_accessControl.CanAccess(User, request)) return Forbid();
+
         if (User.IsInRole("REQUESTER"))
         {
-            if (request.RequesterId != GetActor()) return Forbid();
             request.Comments = request.Comments.Where(comment => !comment.IsInternal).ToList();
         }
 
@@ -212,7 +224,7 @@ public class RequestsController : ControllerBase
         var request = await _context.Requests.FindAsync(id);
         if (request == null) return NotFound();
 
-        if (!RequestStateTransitionPolicy.IsAllowed(request.State, RequestState.Assigned))
+        if (!AssignedTransitionPolicy.IsAllowed(request.State, RequestState.Assigned))
         {
             return Conflict("Only open requests can be assigned.");
         }
@@ -259,14 +271,9 @@ public class RequestsController : ControllerBase
             return BadRequest("Invalid request state.");
         }
 
-        if (!RequestStateTransitionPolicy.IsAllowed(request.State, dto.NewState))
+        if (!RequestStateTransitionPolicy.TryValidate(request, dto.NewState, User, dto.Reason, out var error))
         {
-            return BadRequest($"Cannot transition from {request.State} to {dto.NewState}.");
-        }
-
-        if (RequestStateTransitionPolicy.RequiresReason(dto.NewState) && string.IsNullOrWhiteSpace(dto.Reason))
-        {
-            return BadRequest($"A reason is required when transitioning to {dto.NewState}.");
+            return BadRequest(error);
         }
 
         if (dto.NewState == RequestState.Assigned && string.IsNullOrWhiteSpace(request.AssigneeId))
@@ -285,7 +292,7 @@ public class RequestsController : ControllerBase
             NewState = request.State,
             ChangedAt = DateTime.UtcNow,
             ChangedBy = actor,
-            Reason = dto.Reason
+            Reason = string.IsNullOrWhiteSpace(dto.Reason) ? null : dto.Reason.Trim()
         });
 
         // NFR-020 (Issue #35): append-only audit entry in the same transaction.
@@ -321,6 +328,17 @@ public class CreateRequestDto
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int CategoryId { get; set; }
+}
+
+public class CreatedRequestDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int CategoryId { get; set; }
+    public string RequesterId { get; set; } = string.Empty;
+    public RequestState State { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 public class UpdateStateDto

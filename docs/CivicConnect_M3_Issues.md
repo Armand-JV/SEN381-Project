@@ -588,13 +588,19 @@ Labels: `type:feature`, `owner:P2`, `area:A`, `phase:3`, `priority:medium`
 ### Context
 Rejected, Cancelled and Closed exist in the enum but have no behaviour.
 
+### Accepted implementation
+- `Open` and `Assigned` may transition to `Rejected` or `Cancelled`; `InProgress` may also transition to `Closed`; `Resolved` may transition to `Closed`.
+- `Rejected`, `Cancelled`, and `Closed` are terminal states. Every transition into one requires a non-blank reason persisted in `StatusHistory`.
+- Staff, managers, and admins may reject or close. Requesters may cancel their own requests; staff, managers, and admins may cancel any request they can access.
+- Enforcement lives in `RequestStateTransitionPolicy`, called by `RequestsController.UpdateState`.
+
 ### Tasks
-- [ ] Define who may reject/cancel/close and from which states (ADR-M3-03)
-- [ ] Require and persist a reason
-- [ ] Terminal states accept no further transitions
+- [x] Define who may reject/cancel/close and from which states (ADR-M3-03)
+- [x] Require and persist a reason
+- [x] Terminal states accept no further transitions
 
 ### Done when
-- [ ] Terminal-state rules enforced and tested
+- [x] Terminal-state rules enforced and tested
 - [ ] PR links this issue, with two non-author approvals showing real review comments
 - [ ] RTM / registers updated in the same PR where this touches a requirement, test or defect
 - [ ] Any AI-assisted content logged in the AI Usage Register and verified
@@ -639,12 +645,17 @@ Labels: `type:feature`, `owner:P2`, `area:A`, `phase:3`, `priority:medium`
 ### Context
 Needed for the 'staff accessing out-of-scope request' negative case. Confirm the scope rule (assigned-only, category, or all staff) from the AC.
 
+### Accepted implementation
+- Staff access is assigned-only: staff may access requests where `AssigneeId` matches their authenticated user ID.
+- Admins and managers retain broad access. Requesters may access their own requests.
+- `AccessControlService` is the single authorization check; controller denial returns `403 Forbidden`.
+
 ### Tasks
-- [ ] Implement the confirmed scope rule in a single authorisation policy/handler
-- [ ] Return 403 for out-of-scope access
+- [x] Implement the confirmed scope rule in a single authorisation policy/handler
+- [x] Return 403 for out-of-scope access
 
 ### Done when
-- [ ] TC-N-03 passes against the real endpoint
+- [x] TC-N-03 passes against the real endpoint
 - [ ] PR links this issue, with two non-author approvals showing real review comments
 - [ ] RTM / registers updated in the same PR where this touches a requirement, test or defect
 - [ ] Any AI-assisted content logged in the AI Usage Register and verified
