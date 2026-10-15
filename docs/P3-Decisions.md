@@ -184,3 +184,37 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - Production behavior (different host, data volume, network).
 - Concurrent-write contention (read-only workload).
 - Behavior beyond 10 users / 1k rows (that is M3-PERF-03 interpretation territory, not this plan).
+
+---
+
+## M3-STG-01 (Issue #75) - Staging approach
+
+- **Date:** 2026-10-14
+- **Issue:** [#75](https://github.com/Armand-JV/SEN381-Project/issues/75)
+- **Decided by:** P3 (user decisions, asked explicitly per workflow)
+- **Status:** Decision recorded; build-out in M3-STG-02..06 (phase 5)
+
+### Comparison (user-reviewed)
+- **Compose-based local (chosen):** Docker compose with web + PostgreSQL. Reproducible,
+  version-pinned, runnable by the assessor; matches the M2 single-deployable assumption
+  and M1 free-tier constraint. Dockerfile/compose land in M3-STG-03.
+- **Local simulated without containers (interim):** `dotnet run` + local PostgreSQL 18.
+  Zero new tooling; proven working end-to-end repeatedly this session
+  (build, JWT auth, seeded and live-DB runs). Serves as staging until compose lands.
+- **Hosted cloud (rejected):** no account, pipeline, or budget in place; operational
+  cost disproportionate to a 3-person team on this timeline. No bonus marks for
+  infrastructure complexity (per the issue).
+
+### Decision (user, 2026-10-14)
+- Target: compose-based local staging; interim: local `dotnet run` + PostgreSQL.
+- Shared remote DB (`armanddatabase.webhop.me`) remains the team data tier in the
+  interim; staging Postgres (compose or local) is seeded separately - never load-test
+  or experiment against shared data (ties M3-PERF-01 environment rule).
+
+### Assessor demo path (proven 2026-10-14)
+1. Clone repo at the tagged release candidate, restore, `dotnet run` (http profile).
+2. Open `/` (redirects to `/swagger/index.html`).
+3. Mint role token: `GET /api/testauth/token/{user}?role=ADMIN|MANAGER|STAFF`.
+4. Authorize in Swagger (Bearer), exercise submit → assign → state → history →
+   dashboard → audit journeys.
+5. `GET /health` proves DB connectivity.
