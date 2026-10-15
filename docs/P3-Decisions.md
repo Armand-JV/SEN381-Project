@@ -248,3 +248,20 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - DB-down run: `503 {"title":"Service Unavailable","status":503,"detail":"Cannot connect to database."}`.
 - No connection strings, hosts, or credentials leak in either response (generic messages by design in `Program.cs`).
 - Unexercised path: the `catch` branch (`"Database connection error."`) triggers only when the check itself throws rather than returning false; same no-detail property holds by construction.
+
+---
+
+## M3-TEST-15 (Issue #59) - Staging E2E run
+
+- **Date:** 2026-10-15
+- **Issue:** [#59](https://github.com/Armand-JV/SEN381-Project/issues/59)
+- **Status:** Passing via `scripts/staging-e2e.ps1`; result tied to `/api/version` commit
+
+### How it runs (all verified live 2026-10-15)
+- Staging stack: app with `ASPNETCORE_ENVIRONMENT=Staging` (honest env — `--no-launch-profile`,
+  after catching that the http profile forces Development) on the isolated scratch DB.
+- Auth: TestAuth mints only in Development (controller design), so a throwaway Development
+  minter on :5288 mints REQUESTER/STAFF/MANAGER tokens (same JWT config) spent on staging.
+- Journey: submit → assign → InProgress → Resolved → requester reads Resolved → audit shows 2 entries.
+- Latest run: `STAGING-E2E PASS: TC-S-01 green on commit ec9cb7a` (request #1010, 2 audit entries).
+- Same minter pattern retrofitted to `scripts/staging-smoke.ps1` (it had the same latent flaw).
