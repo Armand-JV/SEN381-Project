@@ -100,9 +100,10 @@ public class RequestsController : ControllerBase
             .FirstOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
 
+        if (!_accessControl.CanAccess(User, request)) return Forbid();
+
         if (User.IsInRole("REQUESTER"))
         {
-            if (request.RequesterId != GetActor()) return Forbid();
             request.Comments = request.Comments.Where(comment => !comment.IsInternal).ToList();
         }
 
