@@ -79,3 +79,12 @@ Implementation and tests land on `feature/Fr-01-to-06` (issues #15, #16, #17, #1
 - **FR-003:** numeric `Request.Id` accepted as the unique human-readable reference; no `ReferenceNumber` column added.
 - **FR-005:** history `Reason` is shown to requesters.
 - Field limits (title 200, description 2000, feedback comment 2000, rating 1–5) are recorded as the implemented contract; they are not claimed to match unverified M1 wording.
+
+## Management traceability (FR-015–FR-016, P3 Phase 6)
+
+AC wording below is authored by P3 (no baseline AC existed; see `docs/P3-Decisions.md` FR-015/FR-016 sections). FR-014/NFR-020 rows follow separately under M3-RTM-04 (#87).
+
+| ID and requirement | Acceptance criterion | Implementation evidence | Verification evidence | Status / gap |
+|---|---|---|---|---|
+| **FR-015** Management oversight: stalled list + reassign | Manager lists Open/Assigned requests at least N days old (default 7, plain age filter) and reassigns them; each reassign writes history + audit | `ManagementController`: `GET stalled`, `PUT reassign/{id}` (ADMIN/MANAGER only); transition policy; StatusHistory + `Reassigned` AuditLog in one transaction | `ManagementTests`: stalled filtering/order/guards, Open→Assigned + Assigned-stays reassign with history/audit assertions, Forbid/NotFound/BadRequest cases | **Verified** in test host. No "overdue" semantics (CR-002 open); production JWT not exercised. |
+| **FR-016** Category administration | Manager creates/renames categories; names non-empty and unique; unknown id gives 404 | `ManagementController`: `POST/PUT categories` (ADMIN/MANAGER only); no schema change | `ManagementTests`: create + duplicate-conflict + blank-reject + forbid; rename + unknown-404 | **Verified** in test host. |

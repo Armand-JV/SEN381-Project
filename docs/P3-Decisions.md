@@ -364,3 +364,49 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 3. `dotnet ef database update` (Up again): schema + history restored, audit table empty.
 4. Backup restored into fresh `civicconnect_restored`: 5 audit rows + 1009 requests back
    (proof the backup path works); proof DB dropped afterward.
+
+---
+
+## P3 Phase 6 batch (Issues #82, #83, #97, #98 + #99, #100, #93, plus unblocked #33, #34, #58, #87)
+
+- **Date:** 2026-10-15
+- **Decided by:** P3 (user decision)
+- Branch `feature/m3-p3-phase6` from current `main`; one PR on completion.
+- Formerly blocked #33/#34/#58/#87 join this batch: their dependencies landed
+  (RTM-M3.md exists; FR-006 feedback API exists).
+
+---
+
+## FR-015 (Issue #33) - Management oversight: stalled list + reassign
+
+- **Date:** 2026-10-15
+- **Issue:** [#33](https://github.com/Armand-JV/SEN381-Project/issues/33)
+- **Decided by:** P3 (user decisions: stalled + reassign scope)
+- **Status:** Accepted criteria defined by P3 (RTM had no FR-015 wording; P1's RTM
+  instructs owners to continue their own rows)
+
+### Accepted criteria (authored by P3)
+- `GET /api/management/stalled?olderThanDays=N` (default 7, ADMIN/MANAGER only):
+  requests in Open/Assigned with `CreatedAt` at least N days old, stalest first.
+  Plain age filter only - no "overdue" semantics (M2 CR-002 deliberately unresolved).
+- `PUT /api/management/requests/{id}/reassign` (`assigneeId` required, `reason` optional,
+  ADMIN/MANAGER only): sets assignee; Open moves to Assigned through the transition
+  policy, Assigned stays Assigned; writes one StatusHistory + one `Reassigned` audit entry
+  in the same transaction.
+
+---
+
+## FR-016 (Issue #34) - Category administration
+
+- **Date:** 2026-10-15
+- **Issue:** [#34](https://github.com/Armand-JV/SEN381-Project/issues/34)
+- **Decided by:** P3 (user decision: category administration)
+- **Status:** Accepted criteria defined by P3 (RTM had no FR-016 wording)
+
+### Accepted criteria (authored by P3)
+- `POST /api/management/categories` (`name` required non-empty, `description` optional,
+  ADMIN/MANAGER only) -> 201; duplicate names rejected.
+- `PUT /api/management/categories/{id}` (same validation, ADMIN/MANAGER only) -> 200;
+  unknown id -> 404.
+- No schema change (no migration); lives in `ManagementController` so P1's
+  `CategoriesController` is untouched.
