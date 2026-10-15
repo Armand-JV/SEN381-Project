@@ -1,4 +1,6 @@
-# Technical Debt Register (M3)
+# Technical Debt Register
+
+**Scope:** M3 CI and security findings. Items are verified from repository evidence; ordinary test gaps remain in the RTM unless explicitly accepted as debt.
 
 Owner of the register: P3 (M3-REL-04, issue #101). Columns per the issue:
 item | impact | interest (cost of delay) | plan | owner | status.

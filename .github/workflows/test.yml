@@ -41,6 +41,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/CivicConnect.Web/ClientApp/package-lock.json
+
+      - name: Build frontend
+        working-directory: src/CivicConnect.Web/ClientApp
+        run: |
+          npm ci
+          npm run build
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
@@ -99,7 +112,11 @@ jobs:
           dotnet list src/CivicConnect.slnx package --vulnerable --include-transitive --format json --output-version 1 > TestResults/vulnerabilities.json
           python3 scripts/check-vulnerabilities.py TestResults/vulnerabilities.json
 
+      - name: Validate coverage summary script
+        run: python3 scripts/coverage-summary.py --self-test
+
       - name: Test solution
+        id: tests
         run: >-
           dotnet test src/CivicConnect.slnx
           --configuration Release
@@ -107,6 +124,11 @@ jobs:
           --logger "trx;LogFileName=test-results.trx"
           --results-directory TestResults
           --collect "XPlat Code Coverage"
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+
+      - name: Summarise Cobertura coverage
+        if: always()
+        run: python3 scripts/coverage-summary.py --results-directory TestResults
 
       - name: Upload test and coverage results
         if: always()
