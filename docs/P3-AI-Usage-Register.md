@@ -31,3 +31,11 @@ one unified table to serve both use cases (see `P3-Decisions.md`).
 | 2026-10-14 | #75 staging decision (`P3-Decisions.md`) | AI compared compose-local / local-simulated / hosted | Confirmed 2026-10-14: I chose compose-local target with local-run demo path |
 
 Rejected/rewritten this session: none — all AI drafts accepted as directed.
+
+## Phase 4 session (2026-10-15, branch `feature/m3-p3-phase4`)
+
+| Date | Artefact | AI use | Human verification |
+|---|---|---|---|
+| 2026-10-15 | `docs/Tests/m3-test-05-evidence.md` (#49) | AI verified TC-U-05/TC-U-06 coverage against the tree, ran the suites, drafted the evidence record | Confirmed 2026-10-15: I directed the evidence work and accept the records as accurate |
+
+Rejected/rewritten this session: none.
