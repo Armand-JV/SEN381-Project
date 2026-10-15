@@ -341,3 +341,26 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - No real IdP → any production use without auth rework is NOT READY material.
 - No TLS story below production → demo-only caveat for hosted staging.
 - Swagger intentionally on in staging (demo need) — must stay off in production.
+
+---
+
+## M3-STG-09 (Issue #83) - Rollback and recovery
+
+- **Date:** 2026-10-15
+- **Issue:** [#83](https://github.com/Armand-JV/SEN381-Project/issues/83)
+- **Status:** Procedure recorded; dry run passed on scratch (shared DB never touched)
+
+### Procedure
+- Artefacts restored: previous good build (tag/image) + database content + config (env vars).
+- Data rule: **forward-fix preferred**. EF `Down()` drops tables (proven below: 5 audit rows lost),
+  so any Down-based rollback MUST be preceded by a `pg_dump` backup.
+- Order: stop app -> `pg_dump -Fc` backup -> apply change (Up) or revert (Down) ->
+  verify `/health` + history rows -> keep backup until the release is accepted.
+
+### Dry run (2026-10-15, isolated scratch cluster)
+1. Backup: `pg_dump -Fc` of scratch (1009 requests incl. 1k seed, 5 audit rows).
+2. `dotnet ef database update <previous>` (Down our migration): `AuditLogs` + indexes dropped,
+   history row removed, 5 audit rows lost as predicted. Requests intact (1009).
+3. `dotnet ef database update` (Up again): schema + history restored, audit table empty.
+4. Backup restored into fresh `civicconnect_restored`: 5 audit rows + 1009 requests back
+   (proof the backup path works); proof DB dropped afterward.
