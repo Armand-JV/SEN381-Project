@@ -19,6 +19,7 @@ CivicConnect is a citizen service request management platform built for the SEN3
 - `CivicConnect.Domain`: Core entities (Request, Category, Comment, Enums)
 - `CivicConnect.Application`: Business logic, interfaces, repositories, and design patterns (Observer, Strategy)
 - `CivicConnect.Web`: API Controllers, EF Core DbContext, Migrations
+- `src/CivicConnect.Web/ClientApp`: React + TypeScript + Vite SPA frontend
 - `CivicConnect.Tests`: Unit tests (xUnit, Moq, FluentAssertions)
 
 ## API Endpoints
@@ -35,8 +36,13 @@ dotnet build
 
 ### Run
 ```bash
-cd src/CivicConnect.Web
-dotnet run
+# Backend
+dotnet run --project src/CivicConnect.Web
+
+# Frontend (dev server with API proxy)
+cd src/CivicConnect.Web/ClientApp
+npm install
+npm run dev
 ```
 
 ### Tests
@@ -62,9 +68,10 @@ CI uses disposable PostgreSQL service values through `ConnectionStrings__Default
 - .NET 10.0 SDK
 - PostgreSQL 18
 - `dotnet ef` tools (`dotnet tool install --global dotnet-ef`)
+- Node.js 22+ (for the React/Vite frontend)
 
-### Running locally
-1. Clone the repository and navigate to `src/CivicConnect.Web`.
+### Running the backend locally
+1. Clone the repository and navigate to the repository root.
 2. Ensure PostgreSQL is running.
 3. Configure database credentials in `.env` (copy from `.env.example`):
    ```env
@@ -77,13 +84,42 @@ CI uses disposable PostgreSQL service values through `ConnectionStrings__Default
    ```
 4. Run EF database migrations:
    ```bash
-   dotnet ef database update
+   dotnet ef database update --project src/CivicConnect.Web --startup-project src/CivicConnect.Web
    ```
-5. Run the application:
+5. Run the backend application:
    ```bash
-   dotnet run
+   dotnet run --project src/CivicConnect.Web
    ```
-6. Access Swagger UI at `https://localhost:<port>/swagger` to interact with the API endpoints.
+6. Access Swagger UI at `https://localhost:<port>/swagger` to interact with the API endpoints. The API is served on `https://localhost:5287` (or `http://localhost:5287` if HTTPS is disabled).
+
+### Running the frontend locally
+The frontend is a React + TypeScript + Vite single-page application in `src/CivicConnect.Web/ClientApp/`. It proxies API requests to the backend during development.
+
+1. Ensure Node.js 22+ is installed.
+2. Install dependencies (from the `src/CivicConnect.Web/ClientApp/` directory):
+   ```bash
+   cd src/CivicConnect.Web/ClientApp
+   npm install
+   ```
+3. Start the Vite dev server:
+   ```bash
+   npm run dev
+   ```
+4. Open `http://localhost:5173` in a browser. The dev server proxies `/api` and `/health` requests to `http://localhost:5287`.
+
+### Building the frontend for production
+The Vite build outputs static assets to `src/CivicConnect.Web/wwwroot/`, which ASP.NET Core serves in production via `MapFallbackToFile("/index.html")`.
+
+```bash
+cd src/CivicConnect.Web/ClientApp
+npm run build
+```
+
+In production, start only the backend:
+```bash
+dotnet run --project src/CivicConnect.Web
+```
+The backend serves both the API and the statically-built React UI.
 
 ## Governance
 This project follows strict branch protection on `main`. Pull requests require at least two approvals. All substantive code must trace back to the PED requirements.
