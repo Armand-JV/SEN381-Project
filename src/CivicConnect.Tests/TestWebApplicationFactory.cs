@@ -82,6 +82,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         }
 
         db.StatusHistories.ExecuteDelete();
+        db.Feedback.ExecuteDelete();
         db.AuditEntries.ExecuteDelete();
         db.Comments.Where(comment => comment.Id != 1).ExecuteDelete();
         db.Requests.Where(request => request.Id != 2).ExecuteDelete();

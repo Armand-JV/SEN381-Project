@@ -19,4 +19,5 @@ public class Request
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<StatusHistory> History { get; set; } = new List<StatusHistory>();
     public ICollection<AuditEntry> AuditEntries { get; set; } = new List<AuditEntry>();
+    public Feedback? Feedback { get; set; }
 }

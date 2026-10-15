@@ -6,7 +6,7 @@
 **Current branch evidence:** https://github.com/Armand-JV/SEN381-Project/actions/runs/38742180022/job/116446413398?pr=135; hosted CI run URL is added only after an actual run.  
 **Verification completed 2026-10-15:** 59 tests passed; coverage-summary self-test passed; format verification passed. Hosted CI evidence remains pending.
 **Coverage limit:** Cobertura execution counts do not prove requirement satisfaction, assertion quality, authorization completeness, or production-configuration behavior. Critical gaps remain listed in the PED §5 note and row statuses below.
-**AI record:** `docs/P2-AI-Usage-Register.md`; P2 human verification remains pending before merge.
+**AI record:** `docs/P2-AI-Usage-Register.md`; requester-slice entries: `docs/P1-AI-Usage-Register.md`; human verification remains pending before merge.
 
 ## Status vocabulary
 
@@ -59,4 +59,23 @@ M3 issue titles were inferred before PED v2 was present. The crosswalk below pre
 
 ## Carried-forward PED rows outside this slice
 
-PED v2 §E rows FR-001–FR-006, FR-014–FR-016, NFR-020–NFR-024 remain part of the baseline. Their current verification is not reassessed by issue #86. Owners must continue those rows in the same matrix rather than creating a second competing RTM.
+PED v2 §E rows FR-014–FR-016 and NFR-020–NFR-024 remain part of the baseline and are not reassessed here. Owners must continue those rows in the same matrix rather than creating a second competing RTM.
+
+## Requester traceability (FR-001–FR-006)
+
+Implementation and tests land on `feature/Fr-01-to-06` (issues #15, #16, #17, #18, #19, #20). Evidence: `RequesterSliceTests`, existing `RequestControllerTests`, `docs/Tests/requester-slice.md`. Hosted CI evidence pending; statuses below are repository-local.
+
+| ID and requirement | Acceptance criterion | Implementation evidence | Verification evidence | Status / gap |
+|---|---|---|---|---|
+| **FR-001** Submit validated service request as authenticated requester | Valid submission persists request + initial history and returns DTO; invalid input rejected without persistence | `RequestsController.CreateRequest`: title required ≤200 trimmed, description required ≤2000 trimmed, category required/valid, `GetActor()` from principal, `CreatedRequestDto` with numeric `Id` | `RequesterSliceTests.CreateRequest_InvalidInput_ReturnsFieldValidationAndPersistsNothing`, `CreateRequest_MaxLengthsAccepted_AndOverLimitRejected`; `RequestControllerTests.CreateRequest_*` | **Implemented.** Field limits are the implementation contract (200/2000), not re-derived from an M1 AC; hosted CI pending. |
+| **FR-002** Category selection and category-specific validation | Requester chooses a category; strategies selected by category ID govern validation | `GET /api/categories` (`CategoriesController`); `CategoryValidationContext` + `Category1ValidationStrategy` registered in `Program.cs` | `RequesterSliceTests.Categories_ReturnSeededDtos`; `RequestControllerTests.Program_Registration_IncludesConcreteObserver` (strategy DI); strategy unit tests | **Implemented.** Only Category 1 has a dedicated strategy; others fall back to non-empty title/description. |
+| **FR-003** Unique request reference | Each request has a unique reference | Numeric `Request.Id` (user-accepted decision); referenced as `Request #<Id>` in UI and `CreatedAtAction` location | `RequestControllerTests.CreateRequest_ValidSubmission_ReturnsCreatedDtoAndPersistsInitialHistory` asserts unique Id/location | **Verified** against the accepted numeric-ID interpretation. |
+| **FR-004** Requester views own requests and status | Requester sees only own requests with readable status; ownership from authenticated actor | `GET /api/requests/mine` (REQUESTER-only, paged, `StateName`, category summary); `GetRequest` ownership via `IAccessControlService`, internal comments filtered | `RequesterSliceTests.GetMyRequests_UsesActorAndReturnsPagedStateAndCategory`, `GetMyRequests_InvalidPaging_ReturnsBadRequest`, `RequestDetail_ProjectsSafeDtoAndFiltersInternalComments`; `RequestControllerTests.GetRequest_OtherRequester_ReturnsForbidden` | **Verified** in test host for ownership, paging, readable state, internal-comment exclusion. Production JWT not exercised. |
+| **FR-005** Requester views status history timeline | Full transition history visible to authorised viewer, ordered by time, including initial entry and reason | `GET /api/requests/{id}/history`: `ChangedAt` then `Id` order, ownership enforced, `Reason` included (decision: requesters may see reasons) | `RequesterSliceTests.GetHistory_IncludesInitialAndChronologicallyOrdersRows_AndEnforcesOwnership` | **Verified** in test host. |
+| **FR-006** Requester feedback on completed request | Owner may submit one feedback on Resolved/Closed request; duplicates and early submissions rejected | `Feedback` entity + migration `20261015173818_AddFeedback` (unique `RequestId` index, cascade delete); `POST/GET /api/requests/{id}/feedback`: REQUESTER-only owner check, Resolved/Closed gate, rating 1–5, optional comment ≤2000, application + DB duplicate rejection | `RequesterSliceTests.Feedback_RequiresCompletionAndValidOwner`, `Feedback_RejectsNonOwnerInvalidRatingAndDuplicate`, `Feedback_CommentOverLimitReturnsBadRequest` | **Implemented.** Rating range and comment limit are the implementation contract; DB uniqueness enforced on PostgreSQL and application check works on both providers. |
+
+### Requester-slice decisions
+
+- **FR-003:** numeric `Request.Id` accepted as the unique human-readable reference; no `ReferenceNumber` column added.
+- **FR-005:** history `Reason` is shown to requesters.
+- Field limits (title 200, description 2000, feedback comment 2000, rating 1–5) are recorded as the implemented contract; they are not claimed to match unverified M1 wording.

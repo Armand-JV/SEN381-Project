@@ -183,6 +183,39 @@ namespace CivicConnect.Web.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CivicConnect.Domain.Entities.Feedback", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RequestId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestId")
+                        .IsUnique();
+
+                    b.ToTable("Feedback");
+                });
+
             modelBuilder.Entity("CivicConnect.Domain.Entities.Request", b =>
                 {
                     b.Property<int>("Id")
@@ -300,6 +333,17 @@ namespace CivicConnect.Web.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CivicConnect.Domain.Entities.Feedback", b =>
+                {
+                    b.HasOne("CivicConnect.Domain.Entities.Request", "Request")
+                        .WithOne("Feedback")
+                        .HasForeignKey("CivicConnect.Domain.Entities.Feedback", "RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Request");
+                });
+
             modelBuilder.Entity("CivicConnect.Domain.Entities.Request", b =>
                 {
                     b.HasOne("CivicConnect.Domain.Entities.Category", "Category")
@@ -325,6 +369,8 @@ namespace CivicConnect.Web.Migrations
                     b.Navigation("AuditEntries");
 
                     b.Navigation("Comments");
+
+                    b.Navigation("Feedback");
 
                     b.Navigation("History");
                 });

@@ -23,8 +23,6 @@ EnvLoader.Load(builder.Environment.ContentRootPath);
 // Register services.
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddScoped<ICategoryValidationStrategy, Category1ValidationStrategy>();
-
 builder.Services.AddDbContext<CivicConnectDbContext>(options =>
     options.UseNpgsql(
         EnvLoader.GetConnectionString(builder.Configuration)));
