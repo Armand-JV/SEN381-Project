@@ -1,0 +1,47 @@
+# M3-STG-03 (Issue #77): compose-based local staging (web + PostgreSQL).
+# Secrets are NEVER committed: copy .env.staging.example to .env.staging and fill in.
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging up --build
+# Then: migrate (see M3-STG-04 procedure), smoke (scripts/staging-smoke.ps1 pattern).
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${DB_NAME:-civicconnect_staging}
+      POSTGRES_USER: ${DB_USER:-civicconnect_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env.staging}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      GIT_SHA: ${GIT_SHA:-unknown}
+      DB_IP: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-civicconnect_staging}
+      DB_USER: ${DB_USER:-civicconnect_admin}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env.staging}
+      DB_SSLMODE: disable
+      JWT_ISSUER: ${JWT_ISSUER:?JWT_ISSUER must be set in .env.staging}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:?JWT_AUDIENCE must be set in .env.staging}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env.staging}
+      DemoAuth__Enabled: "false"
+
+volumes:
+  pgdata:

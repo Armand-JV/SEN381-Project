@@ -228,13 +228,56 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
   interim; staging Postgres (compose or local) is seeded separately - never load-test
   or experiment against shared data (ties M3-PERF-01 environment rule).
 
-### Assessor demo path (proven 2026-10-14)
+### Assessor demo path (proven 2026-10-14, updated for SPA yield 2026-10-15)
 1. Clone repo at the tagged release candidate, restore, `dotnet run` (http profile).
-2. Open `/` (redirects to `/swagger/index.html`).
+2. Open `/` for the React SPA, `/swagger/index.html` for the API.
 3. Mint role token: `GET /api/testauth/token/{user}?role=ADMIN|MANAGER|STAFF`.
 4. Authorize in Swagger (Bearer), exercise submit → assign → state → history →
    dashboard → audit journeys.
 5. `GET /health` proves DB connectivity.
+
+---
+
+## M3-STG-03 (Issue #77) - Dockerfile and compose
+
+- **Date:** 2026-10-15
+- **Issue:** [#77](https://github.com/Armand-JV/SEN381-Project/issues/77)
+- **Status:** Written, partially verified (no Docker on this machine)
+
+### What was built
+- `Dockerfile` (3 stages): Node 22 builds the Vite SPA into `wwwroot`; SDK publishes
+  the backend with that `wwwroot`; ASP.NET runtime serves it (`Staging`, port 8080).
+  `GIT_SHA` flows via environment at run time (see #79), not build args.
+- `docker-compose.staging.yml`: `db` (postgres:18, volume, `pg_isready` healthcheck)
+  + `web` (healthy-db dependency); secrets only via `.env.staging` (never committed,
+  `${VAR:?err}` guards); `DemoAuth__Enabled=false` in staging.
+- `.dockerignore`: excludes build outputs, git, secrets, and `wwwroot/*` (populated by the frontend stage).
+
+### Verified without Docker
+- `dotnet build slnx` clean (mirrors the backend stage); `npm ci` + `npm run build`
+  green locally, and the produced `wwwroot` served live: `/` returns the SPA
+  (`200`, title CivicConnect) — the #21 yield works end to end with a real build.
+- NOT verified: `docker compose up` itself. Needs a Docker host (teammate/assessor/CI)
+  before this is done-done; flagged honestly.
+
+---
+
+## M3-STG-04 (Issue #78) - Migration and seed procedure
+
+- **Date:** 2026-10-15
+- **Issue:** [#78](https://github.com/Armand-JV/SEN381-Project/issues/78)
+- **Decided by:** P3 (user decision: EF bundle over SQL script)
+- **Status:** Procedure recorded; bundle build verified, run pending scratch/staging DB
+
+### Procedure (user-approved vehicle: EF bundle)
+1. Build the bundle (verified — builds clean, no DB needed):
+   `dotnet ef migrations bundle --project src/CivicConnect.Web --output efbundle(.exe)`
+   (copy `appsettings.json` alongside it per the tooling note).
+2. Start the staging database (compose `db` service).
+3. Run `./efbundle` with the staging connection environment — applies pending migrations.
+4. Seed: rely on `HasData` categories; demo users via TestAuth require
+   `DemoAuth__Enabled=true` (staging default stays off; opt in per run as in #80).
+5. Verify: `/health` green, `__EFMigrationsHistory` contains the expected IDs.
 
 ---
 
