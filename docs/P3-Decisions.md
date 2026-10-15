@@ -410,3 +410,25 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
   unknown id -> 404.
 - No schema change (no migration); lives in `ManagementController` so P1's
   `CategoriesController` is untouched.
+
+---
+
+## M3-REL-02 (Issue #99) - Readiness classification
+
+- **Date:** 2026-10-15
+- **Issue:** [#99](https://github.com/Armand-JV/SEN381-Project/issues/99)
+- **Decided by:** P3 (user judgment call)
+- **Classification: CONDITIONALLY READY**
+
+### Reasoning (several evidence sources, per the issue)
+For: clean build under warnings-as-errors; 94/94 tests incl. E2E journeys locally and
+on staging; perf PASS with ~100x headroom; static/security gates clean; audit trail
+writes verified; full evidence indexed in `docs/Release-Evidence-Summary.md`.
+Against READY: no production host, TLS story, or real IdP (JWT demo scheme);
+staging is local-simulated; dual audit tables unresolved; FR-015/016 AC self-authored;
+outbox best-effort; no concurrency token.
+
+### Conditions
+1. Demo/assessment use only via the documented paths (local run, Swagger, staging scripts).
+2. No production traffic until: real IdP, TLS/hosting story, one-table audit decision.
+3. Deferred scope stays deferred (age buckets, outbox, FR-015/016 baseline reconciliation).
