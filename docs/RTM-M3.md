@@ -3,7 +3,7 @@
 **Baseline:** M1 requirements, continued by Milestone 2 PED v2.0 §E (RTM v2.0).  
 **Scope:** Staff requirements FR-007–FR-013 and security NFR-017–NFR-019 for issue #86.  
 **Related CI evidence:** Issue #69; `.github/workflows/test.yml`; `docs/Milestone 3/PED-Section-5-CI-and-Coverage.md`.  
-**Current branch evidence:** `ci/coverage-and-staff-rtm`; hosted CI run URL is added only after an actual run.  
+**Current branch evidence:** https://github.com/Armand-JV/SEN381-Project/actions/runs/38742180022/job/116446413398?pr=135; hosted CI run URL is added only after an actual run.  
 **Verification completed 2026-10-15:** 59 tests passed; coverage-summary self-test passed; format verification passed. Hosted CI evidence remains pending.
 **Coverage limit:** Cobertura execution counts do not prove requirement satisfaction, assertion quality, authorization completeness, or production-configuration behavior. Critical gaps remain listed in the PED §5 note and row statuses below.
 **AI record:** `docs/P2-AI-Usage-Register.md`; P2 human verification remains pending before merge.
