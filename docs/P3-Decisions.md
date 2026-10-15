@@ -191,6 +191,17 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - Concurrent-write contention (read-only workload).
 - Behavior beyond 10 users / 1k rows (that is M3-PERF-03 interpretation territory, not this plan).
 
+### Execution TC-P-01 (M3-PERF-03 #63, run 2026-10-15)
+- Environment: local app + isolated local PostgreSQL 5433 (throwaway cluster, Armand's
+  dump restored + `seed-perf.sql` 1,000 rows). Shared DB untouched throughout.
+- Result (10 VUs x 2 min, 109,525 requests, 0 errors, ~913 RPS):
+  p50 9.45ms, p75 14.27ms, **p95 23.71ms**, p99 32.9ms, max 486ms.
+- Vs target: p95 23.71ms << 3,000ms with zero errors — **PASS** by two orders of magnitude.
+- What this does NOT prove (PED s8 limits): production behavior; write contention;
+  beyond-10-user scale; cold-start/JIT warm-up excluded by steady-state measurement.
+  Note: NBomber free license is personal-use-only messaging appeared at runtime —
+  academic use here, but flag before any organizational/commercial use.
+
 ---
 
 ## M3-STG-01 (Issue #75) - Staging approach
