@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Reflection;
 using System.Text;
 
 // Load environment variables from .env if present.
@@ -127,5 +128,33 @@ app.MapGet("/health", async (CivicConnectDbContext db) =>
 // Keep missing API endpoints out of the SPA fallback.
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("/index.html");
+// M3-STG-05 (Issue #79): release identification. Anonymous so the assessor can
+// confirm the deployed build equals the tagged commit. CI injects GIT_SHA at build
+// time; otherwise the assembly version is reported and the commit is "unknown".
+app.MapGet("/api/version", () =>
+{
+    var assembly = Assembly.GetExecutingAssembly();
+    var informational = assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+        .InformationalVersion;
+    var version = informational ?? assembly.GetName().Version?.ToString() ?? "unknown";
+
+    return Results.Ok(new
+    {
+        service = "CivicConnect API",
+        version,
+        commit = Environment.GetEnvironmentVariable("GIT_SHA") ?? "unknown",
+        environment = app.Environment.EnvironmentName
+    });
+});
+
+// M3-UI-01 (Issue #21): API-only demo path — no Razor UI.
+// Root no longer 404s: Swagger in Development, API pointer otherwise.
+app.MapGet("/", () =>
+{
+    return app.Environment.IsDevelopment()
+        ? Results.Redirect("/swagger")
+        : Results.Ok(new { service = "CivicConnect API", health = "/health", demo = "See docs/P3-Decisions.md M3-UI-01" });
+});
 
 app.Run();
