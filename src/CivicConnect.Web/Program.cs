@@ -80,7 +80,10 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler();
     app.UseHsts();
 }
-else
+
+// M3-STG-02 (Issue #76): Swagger serves Development and Staging (demo path);
+// never Production. No feature flag: environment membership is the switch.
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
