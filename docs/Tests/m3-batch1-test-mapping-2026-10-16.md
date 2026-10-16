@@ -13,7 +13,7 @@
 | TC-B-01 | RequestControllerTests.CreateRequest_ValidSubmission_ReturnsCreatedDtoAndPersistsInitialHistory; RequesterSliceTests.CreateRequest_CreatesInitialHistoryLinkedToSavedRequest | Submission and initial history assertions exist. |
 | TC-B-02 | RequesterSliceTests.CreateRequest_InvalidInput_ReturnsFieldValidationAndPersistsNothing | Invalid required-field input returns Bad Request and persists no request. |
 | TC-B-03 | RequestControllerTests.CreateRequest_UnknownCategory_ReturnsBadRequestAndPersistsNothing | Unknown category rejection and no persistence are asserted. |
-| TC-B-04 | RequesterSliceTests.CreateRequest_MaxLengthsAccepted_AndOverLimitRejected | Partial automated coverage: title length 200 and description length 2000 are accepted; title length 201 is rejected. One-below-maximum values and an over-limit description are not demonstrated by this test. |
+| TC-B-04 | RequesterSliceTests.CreateRequest_MaxLengthsAccepted_AndOverLimitRejected | Automated boundary coverage: title length 200 and description lengths 1999 and 2000 are accepted; title length 201 and description length 2001 are rejected. Full Release suite passed. |
 | TC-B-05 | RequestControllerTests.UpdateState_ValidTransition_ReturnsOkAndPersistsHistory | Valid transition, persisted state and history are asserted. |
 | TC-B-06 | RequestControllerTests.UpdateState_IllegalTransition_LeavesRequestUnchanged | Illegal transition rejection and unchanged state are asserted. |
 | TC-B-07 | RequestControllerTests.UpdateState_FromAnyTerminalState_ReturnsBadRequest | Reopening terminal states is rejected. |
@@ -34,7 +34,7 @@ TC-B-08 is mapped to the anonymous request-detail operation, which asserts HTTP 
 ## Batch 1 follow-up
 
 - [x] Map TC-B-08 to the anonymous protected request-detail test.
-- [ ] Compare TC-B-04 boundary values against the test procedure.
+- [x] Compare TC-B-04 boundary values against the test procedure and update the mapping.
 - [x] Confirm TC-U-01 unit-level valid and invalid input assertions.
 - [ ] Update the test-case execution summary only where the mapping supports the expected result.
 - [ ] Attach this mapping and the saved run evidence to the relevant issue or pull request.
