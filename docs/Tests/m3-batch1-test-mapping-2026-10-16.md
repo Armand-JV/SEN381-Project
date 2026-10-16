@@ -31,10 +31,20 @@ Keep a test case pending if its required operation, expected status, boundary va
 
 TC-B-08 is mapped to the anonymous request-detail operation, which asserts HTTP 401. This is automated test evidence; it does not claim a separate manual execution.
 
+## Automated execution summary
+
+The full Release suite passed on 2026-10-16: 119 passed, 0 failed, 0 skipped.
+
+| Test cases | Recorded result | Evidence limitation |
+|---|---|---|
+| TC-B-01 to TC-B-10 | Automated suite passed; see the individual mappings above. | TC-B-08 is automated authorization evidence, not a separately executed manual test. |
+| TC-U-01 to TC-U-02 | Automated suite passed; see the individual mappings above. | The result confirms the automated assertions ran successfully; it does not establish separate manual execution. |
+
+The updated TC-B-04 boundary test was included in the passing Release run. These results do not by themselves establish acceptance validation across every in-scope requirement.
 ## Batch 1 follow-up
 
 - [x] Map TC-B-08 to the anonymous protected request-detail test.
 - [x] Compare TC-B-04 boundary values against the test procedure and update the mapping.
 - [x] Confirm TC-U-01 unit-level valid and invalid input assertions.
-- [ ] Update the test-case execution summary only where the mapping supports the expected result.
+- [x] Record the automated execution summary and preserve the distinction between automated and manual evidence.
 - [ ] Attach this mapping and the saved run evidence to the relevant issue or pull request.
