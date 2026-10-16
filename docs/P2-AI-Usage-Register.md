@@ -1,6 +1,6 @@
 # P2 AI Usage Register (M3)
 
-Owner: P2. Format follows `docs/P3-AI-Usage-Register.md`. Human verification is **pending P2 review**. This draft records AI assistance but makes no claim that a person performed checks in this session.
+Owner: Armand Vermeulen (P2 / `Armand-JV`). Format follows `docs/P3-AI-Usage-Register.md`. Original artifact-level reviews remain pending where marked. PR-level verification below is attributed to the author’s descriptions; transcribing those declarations does not independently verify them.
 
 | Date | Artefact | AI use | Human verification |
 |---|---|---|---|
@@ -9,7 +9,32 @@ Owner: P2. Format follows `docs/P3-AI-Usage-Register.md`. Human verification is 
 | 2026-10-15 | `docs/RTM-M3.md` staff/security rows and issue #69 cross-reference | AI drafted requirement mappings, implementation paths, and issue linkages from current repository evidence | **Pending P2:** review every requirement mapping, source/test citation, status, and evidence limit against baseline PED and current code |
 | 2026-10-15 | `docs/Milestone 3/PED-Section-5-CI-and-Coverage.md` | AI drafted coverage limitation note, critical-path gap list, and M3-CI-07 findings references from current repository evidence | **Pending P2:** verify each gap remains a requirement-specific claim, not a coverage metric; verify findings/register links; add hosted CI link only after run completes |
 | 2026-10-15 | `docs/CI/M3-CI-07-findings.md`, `docs/Technical-Debt-Register.md`, `docs/Residual-Risk-Statement.md`, and `docs/Milestone 3/PED-Section-9-Defects-and-Quality.md` | AI normalized finding dispositions, added stable cross-links, and drafted debt/risk/PED §9 records from existing repository evidence | **Pending P2:** verify every tool, severity, decision, owner, scan-date claim, defect link, and accepted-risk/debt mapping; confirm P3 register ownership and repository-owner actions before merge |
+| 2026-10-16 | `docs/P2-AI-Usage-Register.md` — PR history audit | AI reviewed closed PR descriptions and consolidated each available AI Usage Note below; summaries are based on PR author declarations, not independent proof of every claimed check | **Pending P2:** compare each summary against its PR body and artifacts; resolve conflicting or stale verification claims before marking reviewed |
 
-Rejected/rewritten AI output this session: an initial RTM header would have claimed unverified PED and hosted-CI evidence. It was removed; pending evidence remains explicit. No hosted setting, credential rotation, history rewrite, or human review is claimed by the M3-CI-07 documentation.
+## Closed pull requests with AI Usage Notes
 
-Do not mark this register verified until P2 completes the checks above and replaces the applicable pending cells with dated results.
+The following PRs were authored by Armand-JV and closed (merged unless stated otherwise). This record summarizes the AI Usage Note disclosed in each PR and preserves the verification status/limitations reported there. PR descriptions are author statements, not independent verification by this register.
+
+| PR | Date closed | Scope of AI assistance reported in PR | Verification reported in PR / qualification |
+|---|---|---|---|
+| [#117](https://github.com/Armand-JV/SEN381-Project/pull/117) — Create remote database connection | 2026-10-12 | Generated `.env` database connection builder, removed hard-coded connection strings, created `/health` check | Author reported configuring DB and checking health/build/run locally; no test result or independent AI-register entry recorded. |
+| [#118](https://github.com/Armand-JV/SEN381-Project/pull/118) — Repair test project references | 2026-10-12 | Updated workflow, created category/request builders, scaffolded category validation, domain entity, notifier, authentication-helper and web-factory tests | PR reports 28 tests passed (also says 27 new/updated); reviewer/independent verification not independently confirmed here. |
+| [#119](https://github.com/Armand-JV/SEN381-Project/pull/119) — Fix DEF-001/003/004 | 2026-10-12 | Generated DI registration, test scaffolding, controller refactoring for identity and transition validation | PR AI note claims manual code review and full suite; its Changes section says integration tests could not run due to a file-locking process. Preserve this inconsistency; do not treat PR text alone as proof that full verification ran. |
+| [#120](https://github.com/Armand-JV/SEN381-Project/pull/120) — NFR-017/018/019 | 2026-10-12 | End-to-end JWT setup, AccessControlService design/implementation, controller authorization refactor, EF foreign-key troubleshooting, manual verification guidance | Author reported Postman checks for anonymous/owner/non-owner/admin access and DB integrity; no reproducible test count given. |
+| [#121](https://github.com/Armand-JV/SEN381-Project/pull/121) — Staff request features | 2026-10-14 | Assisted API integration tests, controller coverage, comment endpoint, migration troubleshooting, manual test-case documentation | PR reports 21 focused and 49 full-suite tests passed plus manual HTTP checks. Those are historical PR results, not current suite counts. |
+| [#122](https://github.com/Armand-JV/SEN381-Project/pull/122) — Observer implementation/tests | 2026-10-14 | Conflict-resolution guidance, observer test port, JWT integration-test scaffolding, evidence draft | PR reports focused/full test runs of 9 and 34 passing, diff/conflict-marker checks, and says an AI-register entry was logged. Historical counts only. |
+| [#123](https://github.com/Armand-JV/SEN381-Project/pull/123) — CI hardening | 2026-10-14 | Generated workflow, analyzer/editorconfig/dependabot configuration, vulnerability gate/findings docs, test-auth/factory/database-test changes, README CI commands | PR reports Release build, format, 29 tests, vulnerability self-test/scan, migration, and hosted CI checks. These claims are PR-submitted evidence; exact hosted run was not independently linked in this register. |
+| [#131](https://github.com/Armand-JV/SEN381-Project/pull/131) — FR-011/013 | 2026-10-15 | Assisted merge-conflict resolution and PR-description drafting | PR reports build/tests passed and explicitly says manual exploratory testing was not run. |
+| [#133](https://github.com/Armand-JV/SEN381-Project/pull/133) — M3 test completion | 2026-10-15 | Conflict resolution, test scaffolding, evidence drafting, diagnosis of latent AccessControlService and reason-validation gaps | PR reports 74 tests and formatting passed; manual code-path inspection reported. This result is historical and separate from current 118-test run. |
+| [#135](https://github.com/Armand-JV/SEN381-Project/pull/135) — Coverage, RTM, CI findings | 2026-10-15 | Drafted coverage-summary script/workflow, PED §5, RTM rows, and findings log | PR text reports build, 59 tests, coverage collection, format, and citation review, while `docs/P2-AI-Usage-Register.md` explicitly leaves P2's register-level human review pending. Treat that human review as pending until P2 records it. |
+| [#137](https://github.com/Armand-JV/SEN381-Project/pull/137) — Requester slice | 2026-10-15 | Drafted requester endpoints/DTOs/validation, feedback controller/migration review, React pages, test scaffolding, RTM evidence, SPA build diagnostics | PR reports 93 tests, build, frontend build and TypeScript checks; PostgreSQL migration application was pending user-side. P1 register still records review as pending. |
+| [#139](https://github.com/Armand-JV/SEN381-Project/pull/139) — Credential auth/manager provisioning | 2026-10-16 | Assisted registration/login, manager provisioning/bootstrap, ManageUsers UI/API, tests, JWT claim diagnosis, environment/docs updates | PR reports 110/110 tests, formatting, manual role/login/UI flows and DB inspection. P2 register-level verification of the PR claims remains pending. |
+
+### PRs inspected but not logged as AI-assisted
+
+- [#115](https://github.com/Armand-JV/SEN381-Project/pull/115) — PR description explicitly declares **AI Tool(s) Used: None**; excluded from AI-assisted entries.
+- [#124](https://github.com/Armand-JV/SEN381-Project/pull/124) — closed unmerged PR has an empty description; no AI Usage Note to record.
+
+
+
+
