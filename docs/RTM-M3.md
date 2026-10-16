@@ -4,7 +4,7 @@
 **Scope:** Staff requirements FR-007–FR-013 and security NFR-017–NFR-019 for issue #86.  
 **Related CI evidence:** Issue #69; `.github/workflows/test.yml`; `docs/Milestone 3/PED-Section-5-CI-and-Coverage.md`.  
 **Current branch evidence:** https://github.com/Armand-JV/SEN381-Project/actions/runs/38742180022/job/116446413398?pr=135; hosted CI run URL is added only after an actual run.  
-**Local verification updated 2026-10-16:** Full suite: 119 passed, 0 failed, 0 skipped before the latest assertion change. Focused `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate`: 1 passed, 0 failed after the change. Hosted CI evidence remains pending.
+**Local verification updated 2026-10-16:** Full suite: 119 passed, 0 failed, 0 skipped before the latest assertion change. Focused `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate`: 1 passed, 0 failed after the change. Hosted CI: successful `build-and-test` job for commit `ab65886` on 2026-10-16 ([run #38939041921](https://github.com/Armand-JV/SEN381-Project/actions/runs/38939041921/job/117101739558?pr=143)).
 **Coverage limit:** Cobertura execution counts do not prove requirement satisfaction, assertion quality, authorization completeness, or production-configuration behavior. Critical gaps remain listed in the PED §5 note and row statuses below.
 **AI record:** `docs/P2-AI-Usage-Register.md`; requester-slice entries: `docs/P1-AI-Usage-Register.md`; human verification remains pending before merge.
 
