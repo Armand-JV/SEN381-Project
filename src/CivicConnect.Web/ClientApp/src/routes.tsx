@@ -3,15 +3,19 @@ import { getAuth } from "./api/auth";
 import Layout from "./components/Layout";
 import FeedbackPage from "./pages/FeedbackPage";
 import LoginPage from "./pages/LoginPage";
+import ManageUsersPage from "./pages/ManageUsersPage";
 import MyRequestsPage from "./pages/MyRequestsPage";
 import RequestDetailPage from "./pages/RequestDetailPage";
-import SignupPage from "./pages/SignupPage";
 import StaffQueuePage from "./pages/StaffQueuePage";
 import StatusHistoryPage from "./pages/StatusHistoryPage";
 import SubmitRequestPage from "./pages/SubmitRequestPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return getAuth() ? children : <Navigate replace to="/login" />;
+}
+
+function ManagerRoute({ children }: { children: React.ReactNode }) {
+  return getAuth()?.role === "Manager" ? children : <Navigate replace to="/" />;
 }
 
 function HomeRoute() {
@@ -27,8 +31,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomeRoute /> },
       { path: "login", element: <LoginPage /> },
-      { path: "signup", element: <SignupPage /> },
       { path: "staff/queue", element: <ProtectedRoute><StaffQueuePage /></ProtectedRoute> },
+      { path: "manager/users", element: <ManagerRoute><ManageUsersPage /></ManagerRoute> },
       { path: "requests/:requestId", element: <ProtectedRoute><RequestDetailPage /></ProtectedRoute> },
       { path: "submit", element: <ProtectedRoute><SubmitRequestPage /></ProtectedRoute> },
       { path: "my-requests", element: <ProtectedRoute><MyRequestsPage /></ProtectedRoute> },

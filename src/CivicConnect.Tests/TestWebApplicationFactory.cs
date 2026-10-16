@@ -83,6 +83,8 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 $"Refusing to reset non-CI database '{db.Database.GetDbConnection().Database}'.");
         }
 
+        db.AuditLogs.ExecuteDelete();
+        db.Users.ExecuteDelete();
         db.StatusHistories.ExecuteDelete();
         db.Feedback.ExecuteDelete();
         db.AuditEntries.ExecuteDelete();

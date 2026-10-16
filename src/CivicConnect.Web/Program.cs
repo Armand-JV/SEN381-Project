@@ -1,5 +1,6 @@
 using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
+using CivicConnect.Application.Interfaces;
 using CivicConnect.Application.Services;
 using CivicConnect.Web.Authentication;
 using CivicConnect.Web.Configuration;
@@ -71,7 +72,20 @@ builder.Services.AddScoped<ICategoryValidationStrategy, Category1ValidationStrat
 builder.Services.AddScoped<IRequestStateObserver, LogRequestStateObserver>();
 builder.Services.AddScoped<RequestStateNotifier>();
 
+builder.Services.AddScoped<IUserStore, UserStore>();
+
+builder.Services.AddScoped<AuthService>();
+
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    await ManagerBootstrap.RunAsync(
+        scope.ServiceProvider.GetRequiredService<AuthService>(),
+        Environment.GetEnvironmentVariable("BOOTSTRAP_MANAGER_USERNAME"),
+        Environment.GetEnvironmentVariable("BOOTSTRAP_MANAGER_EMAIL"),
+        Environment.GetEnvironmentVariable("BOOTSTRAP_MANAGER_PASSWORD"));
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

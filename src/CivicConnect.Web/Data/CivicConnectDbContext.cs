@@ -17,6 +17,7 @@ public class CivicConnectDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<Feedback> Feedback => Set<Feedback>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,6 +44,10 @@ public class CivicConnectDbContext : DbContext
         // NFR-020 (Issue #35): audit read path (manager queries by entity + time).
         modelBuilder.Entity<AuditLog>().HasIndex(a => new { a.EntityType, a.EntityId });
         modelBuilder.Entity<AuditLog>().HasIndex(a => a.Timestamp);
+
+        // User uniqueness constraints.
+        modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique();
+        modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
 
         modelBuilder.Entity<Category>().HasData(
             new Category { Id = 1, Name = "Infrastructure", Description = "Roads, bridges, etc." },

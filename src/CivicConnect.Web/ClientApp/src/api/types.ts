@@ -21,6 +21,16 @@ export type UserRole = "Requester" | "Staff" | "Manager";
 
 export interface AuthState { role: UserRole; userId: string; token: string | null; }
 
+export interface LoginRequest { username: string; password: string; }
+
+export interface RegisterRequest { username: string; email: string; password: string; role?: UserRole; }
+
+export interface AuthResponse { userId: string; role: UserRole; token: string; }
+
+export interface ProvisionUserRequest { username: string; email: string; password: string; role: "Staff" | "Manager"; }
+export interface ProvisionedUser { id: number; username: string; email: string; role: "Staff" | "Manager"; }
+
+
 export interface Category { id: number; name: string; description: string; }
 
 export interface RequestComment {
@@ -56,4 +66,4 @@ export interface PagedResultDto<T> {
   items: T[]; page: number; pageSize: number; totalCount: number; totalPages: number;
 }
 
-export interface ProblemDetails { title?: string; detail?: string; errors?: Record<string, string[]>; }
+export interface ProblemDetails { title?: string; detail?: string; errors?: Record<string, string[]>; message?: string; }
