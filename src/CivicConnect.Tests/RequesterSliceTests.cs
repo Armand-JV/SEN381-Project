@@ -65,6 +65,33 @@ public sealed class RequesterSliceTests : IClassFixture<TestWebApplicationFactor
     }
 
     [Fact]
+    public async Task CreateRequest_CreatesInitialHistoryLinkedToSavedRequest()
+    {
+        const string requesterId = "requester-initial-history";
+        var response = await _factory.CreateClient().AsRequester(requesterId)
+            .PostAsJsonAsync("/api/requests", new CreateRequestDto
+            {
+                Title = "Initial history test",
+                Description = "Verify initial history persistence.",
+                CategoryId = 1
+            });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var created = await response.Content.ReadFromJsonAsync<CreatedRequestDto>();
+        Assert.NotNull(created);
+
+        using var db = _factory.CreateDbContext();
+        var request = Assert.Single(db.Requests.Where(r => r.Id == created.Id));
+        Assert.Equal(requesterId, request.RequesterId);
+
+        var history = Assert.Single(db.StatusHistories.Where(h => h.RequestId == created.Id));
+        Assert.Equal(RequestState.Open, history.PreviousState);
+        Assert.Equal(RequestState.Open, history.NewState);
+        Assert.Equal(requesterId, history.ChangedBy);
+        Assert.Equal("Initial submission", history.Reason);
+    }
+    [Fact]
     public async Task GetMyRequests_UsesActorAndReturnsPagedStateAndCategory()
     {
         using (var db = _factory.CreateDbContext())
