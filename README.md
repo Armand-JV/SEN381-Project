@@ -155,7 +155,12 @@ The backend serves both the API and the statically-built React UI.
 |---|---|---|
 | `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_IP`, `DB_PORT`, `DB_SSLMODE` | Yes | PostgreSQL connection (no defaults committed) |
 | `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_SECRET` | Yes | JWT signing/validation |
+| `BOOTSTRAP_MANAGER_USERNAME`, `BOOTSTRAP_MANAGER_EMAIL`, `BOOTSTRAP_MANAGER_PASSWORD` | No | One-time first Manager provisioning; configure all three, then remove after successful startup |
 | `ASPNETCORE_ENVIRONMENT` | Yes | `Development`, `Staging`, or `Production` (controls Swagger + error pages) |
+
+### First Manager bootstrap
+
+Set `BOOTSTRAP_MANAGER_USERNAME`, `BOOTSTRAP_MANAGER_EMAIL`, and `BOOTSTRAP_MANAGER_PASSWORD` as deployment secrets before the first application startup. The application creates the Manager only when no Manager exists, never resets existing credentials, and records the creation in the audit log. Remove all three secrets after successful startup. Later Staff and Manager accounts must be created by an authenticated Manager through **Manage Users** or `POST /api/auth/users`; public registration remains Requester-only.
 
 ## Known limitations
 - No production hosting, TLS certificate story, or real identity provider (JWT demo scheme only).

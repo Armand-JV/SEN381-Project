@@ -67,3 +67,4 @@ nunit-*.xml
 # React production build output; CI generates this before building the web host.
 src/CivicConnect.Web/wwwroot/*
 !src/CivicConnect.Web/wwwroot/.keep
+*.tsbuildinfo
