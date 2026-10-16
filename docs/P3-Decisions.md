@@ -314,3 +314,121 @@ Purpose: record every P3 decision with rationale, alternatives, and M2 compariso
 - Journey: submit → assign → InProgress → Resolved → requester reads Resolved → audit shows 2 entries.
 - Latest run: `STAGING-E2E PASS: TC-S-01 green on commit ec9cb7a` (request #1010, 2 audit entries).
 - Same minter pattern retrofitted to `scripts/staging-smoke.ps1` (it had the same latent flaw).
+
+---
+
+## M3-STG-08 (Issue #82) - Environment differences
+
+- **Date:** 2026-10-15
+- **Issue:** [#82](https://github.com/Armand-JV/SEN381-Project/issues/82)
+- **Status:** Table recorded; belongs in PED s8/s10 when P1 assembles PED v3.0
+
+### Differences that could change production behaviour
+
+| Area | Dev (local) | Staging (interim, proven) | Staging (compose target) | Intended production |
+|---|---|---|---|---|
+| Hosting | `dotnet run` on dev machine | Same, `ASPNETCORE_ENVIRONMENT=Staging` | Containers (web + postgres:18), #77 | UNDECIDED (M2 deferred; single-host assumption) |
+| Database | Local PG18 or shared remote (per `.env`) | Separate scratch/seeded DB (never shared) | Compose volume `pgdata`, fresh + migrated | Unknown host/volume/backup regime |
+| Data volume | Handful of rows (+ optional 1k perf seed locally) | Same | Same | Unknown (no volume estimate exists — ASR-5 open) |
+| Swagger | On (Development) | On (explicit #76 decision) | On | Off (never Production) |
+| Secrets | `.env` file, gitignored | Env vars only (`.env.staging`, never committed) | Same via compose env | Env/secret store (no committed secrets — enforced) |
+| TLS | None (plain HTTP localhost) | None | None (compose has no TLS termination) | Expected (HSTS on for non-Development; no cert story yet) |
+| Auth users | TestAuth minting (Development + `DemoAuth:Enabled`) | Same, via throwaway minter | Same | UNDECIDED — no real IdP; JWT demo scheme only |
+| Build identity | Assembly version (+ local `GIT_SHA`) | `GIT_SHA` env = HEAD (#79, verified) | Same via compose env | Tag-based (M3-REL-05, pending) |
+
+### Links to residual risk (feeds #100)
+- Unknown production host/volume/backup → release/ops risk (P3).
+- No real IdP → any production use without auth rework is NOT READY material.
+- No TLS story below production → demo-only caveat for hosted staging.
+- Swagger intentionally on in staging (demo need) — must stay off in production.
+
+---
+
+## M3-STG-09 (Issue #83) - Rollback and recovery
+
+- **Date:** 2026-10-15
+- **Issue:** [#83](https://github.com/Armand-JV/SEN381-Project/issues/83)
+- **Status:** Procedure recorded; dry run passed on scratch (shared DB never touched)
+
+### Procedure
+- Artefacts restored: previous good build (tag/image) + database content + config (env vars).
+- Data rule: **forward-fix preferred**. EF `Down()` drops tables (proven below: 5 audit rows lost),
+  so any Down-based rollback MUST be preceded by a `pg_dump` backup.
+- Order: stop app -> `pg_dump -Fc` backup -> apply change (Up) or revert (Down) ->
+  verify `/health` + history rows -> keep backup until the release is accepted.
+
+### Dry run (2026-10-15, isolated scratch cluster)
+1. Backup: `pg_dump -Fc` of scratch (1009 requests incl. 1k seed, 5 audit rows).
+2. `dotnet ef database update <previous>` (Down our migration): `AuditLogs` + indexes dropped,
+   history row removed, 5 audit rows lost as predicted. Requests intact (1009).
+3. `dotnet ef database update` (Up again): schema + history restored, audit table empty.
+4. Backup restored into fresh `civicconnect_restored`: 5 audit rows + 1009 requests back
+   (proof the backup path works); proof DB dropped afterward.
+
+---
+
+## P3 Phase 6 batch (Issues #82, #83, #97, #98 + #99, #100, #93, plus unblocked #33, #34, #58, #87)
+
+- **Date:** 2026-10-15
+- **Decided by:** P3 (user decision)
+- Branch `feature/m3-p3-phase6` from current `main`; one PR on completion.
+- Formerly blocked #33/#34/#58/#87 join this batch: their dependencies landed
+  (RTM-M3.md exists; FR-006 feedback API exists).
+
+---
+
+## FR-015 (Issue #33) - Management oversight: stalled list + reassign
+
+- **Date:** 2026-10-15
+- **Issue:** [#33](https://github.com/Armand-JV/SEN381-Project/issues/33)
+- **Decided by:** P3 (user decisions: stalled + reassign scope)
+- **Status:** Accepted criteria defined by P3 (RTM had no FR-015 wording; P1's RTM
+  instructs owners to continue their own rows)
+
+### Accepted criteria (authored by P3)
+- `GET /api/management/stalled?olderThanDays=N` (default 7, ADMIN/MANAGER only):
+  requests in Open/Assigned with `CreatedAt` at least N days old, stalest first.
+  Plain age filter only - no "overdue" semantics (M2 CR-002 deliberately unresolved).
+- `PUT /api/management/requests/{id}/reassign` (`assigneeId` required, `reason` optional,
+  ADMIN/MANAGER only): sets assignee; Open moves to Assigned through the transition
+  policy, Assigned stays Assigned; writes one StatusHistory + one `Reassigned` audit entry
+  in the same transaction.
+
+---
+
+## FR-016 (Issue #34) - Category administration
+
+- **Date:** 2026-10-15
+- **Issue:** [#34](https://github.com/Armand-JV/SEN381-Project/issues/34)
+- **Decided by:** P3 (user decision: category administration)
+- **Status:** Accepted criteria defined by P3 (RTM had no FR-016 wording)
+
+### Accepted criteria (authored by P3)
+- `POST /api/management/categories` (`name` required non-empty, `description` optional,
+  ADMIN/MANAGER only) -> 201; duplicate names rejected.
+- `PUT /api/management/categories/{id}` (same validation, ADMIN/MANAGER only) -> 200;
+  unknown id -> 404.
+- No schema change (no migration); lives in `ManagementController` so P1's
+  `CategoriesController` is untouched.
+
+---
+
+## M3-REL-02 (Issue #99) - Readiness classification
+
+- **Date:** 2026-10-15
+- **Issue:** [#99](https://github.com/Armand-JV/SEN381-Project/issues/99)
+- **Decided by:** P3 (user judgment call)
+- **Classification: CONDITIONALLY READY**
+
+### Reasoning (several evidence sources, per the issue)
+For: clean build under warnings-as-errors; 94/94 tests incl. E2E journeys locally and
+on staging; perf PASS with ~100x headroom; static/security gates clean; audit trail
+writes verified; full evidence indexed in `docs/Release-Evidence-Summary.md`.
+Against READY: no production host, TLS story, or real IdP (JWT demo scheme);
+staging is local-simulated; dual audit tables unresolved; FR-015/016 AC self-authored;
+outbox best-effort; no concurrency token.
+
+### Conditions
+1. Demo/assessment use only via the documented paths (local run, Swagger, staging scripts).
+2. No production traffic until: real IdP, TLS/hosting story, one-table audit decision.
+3. Deferred scope stays deferred (age buckets, outbox, FR-015/016 baseline reconciliation).

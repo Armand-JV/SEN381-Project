@@ -2,12 +2,16 @@
 
 CivicConnect is a citizen service request management platform built for the SEN381 project.
 
-## Milestone 2 Implementation Status
+## Implementation Status (M3)
 - **Architecture**: Separated Domain, Application, and Web modules.
-- **Persistence**: PostgreSQL via Entity Framework Core with initial schema migrations created.
-- **Initial Design Patterns**:
-  - *Observer*: Request status changes emit events that are caught by observers (e.g. notification). View `RequestStateNotifier` and `IRequestStateObserver`.
+- **Persistence**: PostgreSQL via Entity Framework Core with schema migrations created.
+- **Authentication**: JWT bearer with role-based authorization (`REQUESTER`, `STAFF`, `MANAGER`/`ADMIN`); test-header identities in the `Testing` environment only.
+- **Design Patterns**:
+  - *Observer*: Request status changes emit events that are caught by observers (e.g. notification). View `RequestStateNotifier` and `IRequestStateObserver`. Log-only, best-effort delivery (see TD-03 in `docs/Technical-Debt-Register.md`).
   - *Strategy*: Category-specific validations have abstracted strategies. View `CategoryValidationContext` and `ICategoryValidationStrategy`.
+  - *State policy*: Legal status transitions live in the central `RequestStateTransitionPolicy` table (not State objects).
+- **Frontend**: React 19 + Vite SPA (`ClientApp`), built output served from `wwwroot` with SPA fallback; `/` serves the app, `/swagger` the API docs.
+- **Management slice (P3)**: dashboard aggregation, append-only audit trail, stalled oversight + reassignment, category administration, staging/perf/release evidence.
 
 ## Technology Stack
 - **Framework:** .NET 10 (ASP.NET Core API / MVC)
@@ -23,9 +27,23 @@ CivicConnect is a citizen service request management platform built for the SEN3
 - `CivicConnect.Tests`: Unit tests (xUnit, Moq, FluentAssertions)
 
 ## API Endpoints
-- `POST /api/requests`: Create a new request.
-- `GET /api/requests/{id}`: Get a request by ID.
-- `PUT /api/requests/{id}/state`: Update the state of a request.
+All endpoints return JSON problem details on errors. Role abbreviations: REQ = Requester, STF = Staff, MGR = Manager/Admin.
+- `POST /api/requests` (auth): submit a request (validated, requester from principal).
+- `GET /api/requests/{id}` (REQ own / STF / MGR): request detail; internal comments hidden from requesters.
+- `GET /api/requests/mine` (REQ): own requests, paged.
+- `GET /api/requests/{id}/history` (owner / STF / MGR): status history timeline.
+- `PUT /api/requests/{id}/state` (STF / MGR): transition through the policy table (reason required for reject/cancel).
+- `PUT /api/requests/{id}/assign` (STF / MGR): assign to staff, Open becomes Assigned.
+- `POST /api/requests/{id}/comments` (REQ public-only own / STF): public/internal notes.
+- `POST /api/requests/{id}/feedback` (REQ owner, Resolved/Closed only): rating 1-5, one per request.
+- `GET /api/categories` (auth): seeded category list.
+- `GET /api/staff/requests` (STF / MGR): queue with state/category/assignee filters + paging.
+- `GET /api/reports/requests-summary` (MGR): counts by state/category with filters.
+- `GET /api/audit` (MGR): append-only audit trail, filterable by entity.
+- `GET /api/management/stalled` (MGR): Open/Assigned requests older than N days.
+- `PUT /api/management/requests/{id}/reassign` (MGR): reassign with history + audit.
+- `POST /api/management/categories`, `PUT /api/management/categories/{id}` (MGR): category administration.
+- `GET /health` (anonymous): database connectivity. `GET /api/version` (anonymous): build/commit/environment.
 
 ## Commands
 
@@ -90,7 +108,7 @@ CI uses disposable PostgreSQL service values through `ConnectionStrings__Default
    ```bash
    dotnet run --project src/CivicConnect.Web
    ```
-6. Access Swagger UI at `https://localhost:<port>/swagger` to interact with the API endpoints. The API is served on `https://localhost:5287` (or `http://localhost:5287` if HTTPS is disabled).
+6. Access Swagger UI at `http://localhost:5287/swagger` (http profile) to interact with the API endpoints. The API is served on `http://localhost:5287` (or `https://localhost:7121` with the https profile).
 
 ### Running the frontend locally
 The frontend is a React + TypeScript + Vite single-page application in `src/CivicConnect.Web/ClientApp/`. It proxies API requests to the backend during development.
@@ -126,10 +144,10 @@ The backend serves both the API and the statically-built React UI.
    the environment (`.env` is gitignored); `appsettings.Staging.json` holds
    non-secret settings (logging, hosts) and Swagger is enabled for Staging.
 2. Apply migrations: `dotnet ef database update` (run against the staging database).
-3. Run with the staging environment:
+3. Run with the staging environment (no launch profile, so the environment is honest):
    ```powershell
    $env:ASPNETCORE_ENVIRONMENT = "Staging"
-   dotnet run --project src/CivicConnect.Web --launch-profile http
+   dotnet run --project src/CivicConnect.Web --no-launch-profile --urls http://localhost:5287
    ```
 4. Verify: `/swagger/index.html` serves the API docs, `/health` reports database connectivity.
 
@@ -138,6 +156,18 @@ The backend serves both the API and the statically-built React UI.
 | `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_IP`, `DB_PORT`, `DB_SSLMODE` | Yes | PostgreSQL connection (no defaults committed) |
 | `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_SECRET` | Yes | JWT signing/validation |
 | `ASPNETCORE_ENVIRONMENT` | Yes | `Development`, `Staging`, or `Production` (controls Swagger + error pages) |
+
+## Known limitations
+- No production hosting, TLS certificate story, or real identity provider (JWT demo scheme only).
+- Notifications are log-only; no outbox/retry (TD-03). No optimistic concurrency token (TD-02).
+- Docker staging (`docker-compose.staging.yml`) is written but `compose up` still needs a Docker host to verify.
+- FR-015/FR-016 acceptance criteria were authored by P3 (no baseline wording existed); dashboard age buckets deferred.
+
+## Design documents and registers
+- PED v2.0: `docs/Milestone 2/CivicConnect_PED_v2.pdf` (PED v3.0 assembly in progress — sections land per milestone issues).
+- Requirements traceability: `docs/RTM-M3.md` (continued by owners; FR-014–FR-016 + NFR-020 rows: P3).
+- P3 decisions: `docs/P3-Decisions.md`. AI usage: `docs/P3-AI-Usage-Register.md`.
+- Technical Debt Register: `docs/Technical-Debt-Register.md`. Test evidence: `docs/Tests/`.
 
 ## Governance
 This project follows strict branch protection on `main`. Pull requests require at least two approvals. All substantive code must trace back to the PED requirements.
