@@ -1,4 +1,4 @@
-using TransitionMap = CivicConnect.Application.Policies.RequestStateTransitionPolicy;
+using TransitionMap = CivicConnect.Application.Services.RequestStateTransitionPolicy;
 using CivicConnect.Domain.Enums;
 using FluentAssertions;
 using Xunit;
@@ -18,9 +18,24 @@ public class RequestTransitionPolicyTests
         TransitionMap.IsAllowed(RequestState.Open, RequestState.Assigned).Should().BeTrue();
     }
 
-    [Fact]
-    public void IsAllowed_ClosedToOpen_ReturnsFalse()
+    [Theory]
+    [InlineData(RequestState.Open, RequestState.Assigned, true)]
+    [InlineData(RequestState.Open, RequestState.Rejected, true)]
+    [InlineData(RequestState.Open, RequestState.Cancelled, true)]
+    [InlineData(RequestState.Assigned, RequestState.InProgress, true)]
+    [InlineData(RequestState.Assigned, RequestState.Rejected, true)]
+    [InlineData(RequestState.Assigned, RequestState.Cancelled, true)]
+    [InlineData(RequestState.InProgress, RequestState.Resolved, true)]
+    [InlineData(RequestState.InProgress, RequestState.Cancelled, true)]
+    [InlineData(RequestState.Resolved, RequestState.Closed, true)]
+    [InlineData(RequestState.InProgress, RequestState.Rejected, false)]
+    [InlineData(RequestState.InProgress, RequestState.Closed, false)]
+    [InlineData(RequestState.Resolved, RequestState.Cancelled, false)]
+    [InlineData(RequestState.Closed, RequestState.Open, false)]
+    [InlineData(RequestState.Cancelled, RequestState.Open, false)]
+    [InlineData(RequestState.Rejected, RequestState.Open, false)]
+    public void IsAllowed_ReturnsExpectedResult(RequestState current, RequestState next, bool expected)
     {
-        TransitionMap.IsAllowed(RequestState.Closed, RequestState.Open).Should().BeFalse();
+        TransitionMap.IsAllowed(current, next).Should().Be(expected);
     }
 }

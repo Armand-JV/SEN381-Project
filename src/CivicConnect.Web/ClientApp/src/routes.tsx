@@ -4,6 +4,9 @@ import Layout from "./components/Layout";
 import FeedbackPage from "./pages/FeedbackPage";
 import LoginPage from "./pages/LoginPage";
 import ManageUsersPage from "./pages/ManageUsersPage";
+import ManagerAuditPage from "./pages/ManagerAuditPage";
+import ManagerCategoriesPage from "./pages/ManagerCategoriesPage";
+import ManagerDashboardPage from "./pages/ManagerDashboardPage";
 import MyRequestsPage from "./pages/MyRequestsPage";
 import RequestDetailPage from "./pages/RequestDetailPage";
 import StaffQueuePage from "./pages/StaffQueuePage";
@@ -32,6 +35,9 @@ export const router = createBrowserRouter([
       { index: true, element: <HomeRoute /> },
       { path: "login", element: <LoginPage /> },
       { path: "staff/queue", element: <ProtectedRoute><StaffQueuePage /></ProtectedRoute> },
+      { path: "manager/dashboard", element: <ManagerRoute><ManagerDashboardPage /></ManagerRoute> },
+      { path: "manager/categories", element: <ManagerRoute><ManagerCategoriesPage /></ManagerRoute> },
+      { path: "manager/audit", element: <ManagerRoute><ManagerAuditPage /></ManagerRoute> },
       { path: "manager/users", element: <ManagerRoute><ManageUsersPage /></ManagerRoute> },
       { path: "requests/:requestId", element: <ProtectedRoute><RequestDetailPage /></ProtectedRoute> },
       { path: "submit", element: <ProtectedRoute><SubmitRequestPage /></ProtectedRoute> },

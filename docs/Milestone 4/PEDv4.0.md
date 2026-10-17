@@ -13,8 +13,8 @@
 | Team | CivicConnect / SEN381 team |
 | Members | Armand Johannes Vermeulen (602636); Ditheto Lesiba Phaho (601133); Riegardt Christopher Weich (602547) |
 | Repository | https://github.com/Armand-JV/SEN381-Project |
-| Repository baseline inspected | `70a36fb9ad99e1a51bcaab43741d2845c8d04833` (`70a36fb`, 2026-10-17) |
-| Assessed commit/tag | **PENDING team freeze; no Git tag exists in inspected repository** |
+| Repository baseline inspected | `70a36fb9ad99e1a51bcaab43741d2845c8d04833` (`70a36fb`, 2026-10-17); matches the M4 baseline recorded in the final RTM. The only later commit (`358b824`) adds this PED document itself and changes no code. |
+| Assessed commit/tag | **PENDING team freeze; no formal Git tag exists in the inspected repository.** `70a36fb` is the code baseline; the team must freeze and record the exact submission commit/tag before formal sign-off. |
 | PED | v4.0 Final |
 | Final RTM | `docs/Milestone 3/Individual M3 documents/RTM-M3.md` (continued, not recreated) |
 | Final deployment declaration | **PENDING team approval; evidence supports staging / assessment-only no-go for production** |
@@ -56,7 +56,7 @@ The table preserves M1's original meaning. `AC-0010` is shown as corrected `AC-0
 | AC-010 | Unauthorised staff cannot change assignment; authorised assignment is recorded. | **IMPLEMENTED / Met** | `AssignRequest_UpdatesStateHistoryAndAuditWithActor`; requester-forbidden assignment test; `ManagementTests` | Assignment, actor, state/history and audit behaviour are evidenced for covered paths. |
 | AC-011 | Authorised staff update requests through controlled processes; only authorised transitions recorded. | **PARTIALLY IMPLEMENTED / Partially Met** | `RequestStateTransitionPolicy`; illegal-transition/reason/history tests; `RequestControllerTests` | Core policy works, but complete legal/rejected permutation and full role matrix from M2 plan are not evidenced. Implementation changed from State objects to central transition table; recorded in PED v3. |
 | AC-012 | Staff track actions, comments and resolution information. | **PARTIALLY IMPLEMENTED / Partially Met** | `AddComment_*`; internal/public visibility tests; `Comment` entity; state/history endpoints | Comments and visibility work; dedicated exhaustive resolution-information evidence is absent. |
-| AC-013 | Authorised staff resolve/close requests; requester sees the change. | **IMPLEMENTED / Met** | `UpdateState_ValidTransition_ReturnsOkAndPersistsHistory`; `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate`; requester detail endpoint | E2E evidence confirms requester retrieval after resolution. The test asserts history at DB level; that is an evidence-depth limit, not absence of required requester visibility. |
+| AC-013 | Authorised staff resolve/close requests; requester sees the change. | **PARTIALLY IMPLEMENTED / Partially Met** | `UpdateState_ValidTransition_ReturnsOkAndPersistsHistory`; `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate`; requester detail endpoint; `GET /api/requests/{id}/history` | E2E journey confirms requester detail returns 200 after resolution and asserts new state in DB history, but does not inspect the requester response state or history; history-endpoint tests use independently seeded rows. End-to-end proof of the changed state as seen by the requester remains incomplete. |
 | AC-014 | Management views useful service activity information, including major changes such as ownership change. | **IMPLEMENTED / Met** | `ReportsController`; `ManagementTests`; `AuditLogTests`; `GET /api/audit`; dashboard tests | Dashboard and audit provide activity/ownership information. Audit table duplication remains a quality limitation, not hidden. |
 | AC-015 | Management identifies open, overdue, closed and resolved requests. | **PARTIALLY IMPLEMENTED / Partially Met** | `GET /api/reports/requests-summary`; stalled management tests; `docs/Milestone 3/Individual M3 documents/RTM-M3.md` | Open/state counts and stalled age filtering exist. M1's overdue rule/due-date semantics are undefined and not implemented; age buckets remain deferred. |
 | AC-016 | Management views requests by category, status and/or relevant criteria. | **IMPLEMENTED / Met** | Dashboard filters and `DashboardSummaryTests`; management/API evidence | Category/state/assignee/date filters provide the required attribute view. Category administration is additional functionality, not the basis of this status. |
@@ -81,6 +81,8 @@ Applicable approved M1 acceptance criteria: **24**. No approved M4 baseline chan
 | **Total** | **24** | **18.5** |
 
 **Scope Completion Percentage = (18.5 ÷ 24) × 100 = 77.08% (77.1%).**
+
+The original draft labelled AC-013 Met while counting only 14 Met criteria. This review classifies AC-013 Partially Met because the requester-visible resolved-state assertion is missing; the table and arithmetic now agree. No implementation was changed to increase the result.
 
 AC-006 remains in the denominator as a failed in-scope commitment. M1's future-scope SMS/email gateways are excluded; the in-scope generic status-feedback/notification criterion is not.
 
@@ -124,7 +126,7 @@ M3 recorded a local Release test run of **118 passed, 0 failed, 0 skipped on 202
 |---|---|---|
 | `RequesterSliceTests`, `RequestControllerTests` | Requester/staff API behaviour and negative access cases | Test host usually uses EF InMemory unless connection string supplied; criterion-specific gaps remain. |
 | `JwtAuthFlowTests`, `AuthServiceTests`, `PrivilegedProvisioningTests`, `ManagerBootstrapTests` | Credential/JWT happy path and manager provisioning | No full malformed/expired/wrong issuer/audience/signature matrix or external IdP. |
-| `E2EJourneyTests` | Two integrated application journeys | One journey's requester history/state assertion is DB-level rather than exhaustive endpoint-level evidence. |
+| `E2EJourneyTests` | Two integrated application journeys | After resolution, requester GET is checked for HTTP 200 only; resolved state is asserted in DB history, not in the requester response. Separate requester-slice tests cover history responses using seeded data, not this complete journey. |
 | `DashboardSummaryTests`, `ManagementTests`, `AuditLogTests` | Management counts, stalled/reassignment, category and audit behaviours | Staging/production equivalence not proven. |
 | `src/CivicConnect.Perf/` and TC-P-01 | Local performance target passed with large headroom | Localhost, read-heavy, 10-VU, 1,000-row workload only. |
 | `.github/workflows/test.yml` | Reproducible configured quality gates | Configuration proves intended gates, not a green final hosted run. |
@@ -146,12 +148,12 @@ The following remain visible; PED v4 does not silently close them:
 - **TD-02:** no optimistic concurrency token; concurrent edits can be last-writer-wins.
 - **TD-03:** observer delivery is log-only/best-effort; no outbox/retry.
 - **TD-04:** `AuditEntries` and `AuditLogs` coexist.
-- **TD-05–TD-11:** dead authorisation path, missing-secret test-auth failure, capped audit reads, Swagger/staging decision, dead migration, deferred-scope definition and exception-handler/documentation items as recorded in the canonical register.
+- **TD-05–TD-11:** canonical register records the dead authorization path, missing-secret test-auth failure, capped audit reads, Swagger/staging decision, duplicate migration, deferred-scope definition and exception-handler/documentation items. Current source has since changed several conditions: `AccessControlService.CanAccess` is used by request detail/history; `TestAuthController` returns 404 when `JWT_SECRET` is absent; Swagger is enabled in Staging; and `Program.cs` uses `AddProblemDetails()` with parameterless `UseExceptionHandler()`. Reconcile TD-05/06/08/11 status with the owner before closing; capped audit reads, duplicate migration and deferred-scope questions remain visible.
 - **RR-SEC-01/02/03/04:** historical credential exposure, time-varying advisories, hosted GitHub security settings, and incomplete production JWT validation.
 - **RR-REL-01/02/03/05/06:** no production host/TLS/backup regime, no real IdP, dual audit tables, unexecuted Compose path, and authored FR-015/016 criteria.
 - Staff queue scope, overdue semantics, complete transition permutations, exhaustive detail/resolution assertions and final hosted CI evidence remain acceptance limitations.
 
-Canonical records: `docs/Milestone 3/Individual M3 documents/Technical-Debt-Register.md`, `Residual-Risk-Statement.md`, `Release-Evidence-Summary.md`, `docs/CI/M3-CI-07-findings.md` and `docs/Github/CivicConnect_M3_Issues.md`.
+Canonical records: `docs/Milestone 3/Individual M3 documents/Technical-Debt-Register.md`, `docs/Milestone 3/Individual M3 documents/Residual-Risk-Statement.md`, `docs/Milestone 3/Individual M3 documents/Release-Evidence-Summary.md`, `docs/CI/M3-CI-07-findings.md` and `docs/Github/CivicConnect_M3_Issues.md`.
 
 ### 5.3 Closure conclusion
 
@@ -180,7 +182,7 @@ Team's final declaration and owner sign-off: **PENDING**.
 
 ## 8. Final RTM and artefact continuity
 
-The existing RTM remains authoritative: `docs/Milestone 3/Individual M3 documents/RTM-M3.md`. It retains M1/M2 wording and M3 evidence. Its final continuation must point to this PED's AC-001–AC-024 table and preserve evidence limitations. In particular, FR-006/FR-014/FR-015/FR-016 later labels must not erase the original M1 meanings. The RTM must be updated by the team after any final fixes, with the exact assessed commit and human reviewer/date recorded.
+The existing RTM remains authoritative: `docs/Milestone 3/Individual M3 documents/RTM-M3.md`. It retains M1/M2 wording and M3 evidence, and already includes an M4 AC-001–AC-024 continuation referencing this PED. Its summary reports 14 Met, 9 Partially Met and 1 Not Met (**18.5/24 = 77.1%**), but its rows show 15 Met and 8 Partially Met because AC-013 is labelled Met. This PED classifies AC-013 Partially Met: the E2E test checks requester GET for HTTP 200, not the response's resolved state or history. Update the RTM's M4 AC-013 row and preserve its earlier FR-013 evidence limitation; later FR-006/FR-014/FR-015/FR-016 labels must not erase original M1 meanings. Team must record exact assessed commit/tag and human reviewer/date after final verification.
 
 Existing registers continue rather than being recreated:
 
@@ -205,7 +207,7 @@ Existing registers continue rather than being recreated:
 
 **Next work.** Freeze a release tag; rerun critical tests and hosted CI; complete staff queue scope and requester resolution assertions; define overdue semantics; consolidate audit tables; add concurrency protection and durable notifications; validate production JWT/IdP, TLS, backup/recovery and deployment.
 
-**Conclusion.** CivicConnect is a substantial, coherent staging/demo product that delivers most core request-management value but does not meet the 80% scope target on the strict original M1 acceptance baseline and is not production-ready. Its final outcome is credible because gaps, evidence limits, risks and consequences are explicit. The project is concluded only when the team freezes the exact commit, updates the RTM/register owner statuses, records final verification and signs this PED.
+**Conclusion.** CivicConnect is a substantial, coherent staging/demo product that delivers most core request-management value but falls 2.9 points short of the 80% scope target on the strict original M1 acceptance baseline and is not production-ready. Its final outcome is credible because gaps, evidence limits, risks and consequences are explicit. The project is concluded only when the team freezes the exact commit, records final verification, and completes the sign-off fields left pending below.
 
 ## 10. Final demonstration script
 
@@ -213,7 +215,7 @@ Existing registers continue rather than being recreated:
 2. Demonstrate requester registration/login, valid submission, validation failure, own request and history.
 3. Demonstrate staff queue filters, assignment, legal transition, comment visibility and requester-facing result.
 4. Demonstrate manager dashboard, stalled request, reassignment, category operation and audit trail.
-5. Use the M1 scope table to show one met, one partial, one deferred/out-of-scope item and reproduce 77.1% arithmetic.
+5. Use §2.2 to show one met, one partial and one unmet commitment; use §2.4 for deferred/out-of-scope items. Reproduce 18.5/24 = 77.08% (77.1%) without rounding it up to the 80% target.
 6. Show selected RTM evidence, M3 defect/debt/risk status and performance result with limits.
 7. Defend staging/no-go decision, blockers and next remediation.
 8. Each member traces one contribution from M1 requirement through implementation, evidence, limitation and consequence.
@@ -232,9 +234,9 @@ All members must understand combined product, final scope arithmetic, controlled
 
 | Evidence area | Controlled location |
 |---|---|
-| M1 baseline | `docs/Milestone 4/SEN381 Milestone 1.md` |
-| M2 design baseline | `docs/Milestone 4/CivicConnect_PED_v2.md` |
-| M3 historical PED | `docs/Milestone 4/PEDv3.0.md`; `docs/Milestone 3/PEDv3.0.md` |
+| M1 baseline | `docs/Milestone 1/SEN381 Milestone 1.docx` and `docs/Milestone 1/SEN381 Milestone 1.pdf` (M1 brief; requirement text preserved in RTM and PED) |
+| M2 design baseline | `docs/Milestone 2/CivicConnect_PED_v2.pdf` (design, architecture and ADR baseline) |
+| M3 historical PED | `docs/Milestone 3/PEDv3.0.md` |
 | Final requirements trace | `docs/Milestone 3/Individual M3 documents/RTM-M3.md` |
 | Source | `src/` |
 | Tests | `src/CivicConnect.Tests/` |
@@ -243,7 +245,7 @@ All members must understand combined product, final scope arithmetic, controlled
 | Staging | `Dockerfile`, `docker-compose.staging.yml`, `scripts/staging-e2e.ps1`, `scripts/staging-smoke.ps1` |
 | Performance | `src/CivicConnect.Perf/`, `docs/Milestone 3/Individual M3 documents/P3-Decisions.md` |
 | Defects | `docs/Github/CivicConnect_M3_Issues.md` |
-| Debt and risks | `docs/Milestone 3/Individual M3 documents/Technical-Debt-Register.md`; `Residual-Risk-Statement.md` |
+| Debt and risks | `docs/Milestone 3/Individual M3 documents/Technical-Debt-Register.md`; `docs/Milestone 3/Individual M3 documents/Residual-Risk-Statement.md` |
 | CI/security findings | `docs/CI/M3-CI-07-findings.md` |
 | AI registers | `docs/AI Use Registers/` |
 | Product operation | `README.md` |

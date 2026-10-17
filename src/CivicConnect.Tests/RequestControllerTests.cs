@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -358,7 +359,7 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
             });
         await db.SaveChangesAsync();
 
-        var response = await _factory.CreateClient().AsStaff("staff-1")
+        var response = await _factory.CreateClient().AsStaff("staff-a")
             .GetFromJsonAsync<PagedResultDto<StaffRequestListItemDto>>(
                 "/api/staff/requests?state=Assigned&categoryId=1&assigneeId=staff-a&page=1&pageSize=10");
 
@@ -545,6 +546,35 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
         using var verificationScope = _factory.Services.CreateScope();
         var verificationDb = verificationScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
         Assert.Equal(RequestState.Open, verificationDb.Requests.Single(item => item.Id == request.Id).State);
+        Assert.Empty(verificationDb.StatusHistories.Where(item => item.RequestId == request.Id));
+    }
+
+    [Fact]
+    public async Task UpdateState_StaffOutsideScope_ReturnsForbiddenAndLeavesRequestUnchanged()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
+        var request = new Request
+        {
+            CategoryId = 1,
+            Title = "Protected assignment",
+            Description = "Description",
+            RequesterId = "requester-1",
+            AssigneeId = "staff-other",
+            State = RequestState.Assigned,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Requests.Add(request);
+        await db.SaveChangesAsync();
+
+        var response = await _factory.CreateClient().AsStaff("staff-1").PutAsJsonAsync(
+            $"/api/requests/{request.Id}/state",
+            new UpdateStateDto { NewState = RequestState.InProgress, Reason = "Should fail" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var verificationScope = _factory.Services.CreateScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
+        Assert.Equal(RequestState.Assigned, verificationDb.Requests.Single(item => item.Id == request.Id).State);
         Assert.Empty(verificationDb.StatusHistories.Where(item => item.RequestId == request.Id));
     }
 
@@ -790,5 +820,94 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.NotNull(_factory.CreateDbContext().Requests.Single(item => item.Id == 2));
+    }
+
+    [Fact]
+    public async Task UpdateState_CreatesRequesterScopedNotification_ForStateChange()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
+        var request = new Request
+        {
+            CategoryId = 1,
+            Title = "Notification target",
+            Description = "Description",
+            RequesterId = "notification-requester",
+            AssigneeId = "staff-1",
+            State = RequestState.Assigned,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Requests.Add(request);
+        await db.SaveChangesAsync();
+
+        var response = await _factory.CreateClient().AsStaff("staff-1").PutAsJsonAsync(
+            $"/api/requests/{request.Id}/state",
+            new UpdateStateDto { NewState = RequestState.InProgress, Reason = "Work started" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        // Notification persisted with RecipientId == requester and tied to the request.
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
+        var notification = Assert.Single(verifyDb.Notifications.Where(item => item.RequestId == request.Id));
+        Assert.Equal("notification-requester", notification.RecipientId);
+        Assert.Contains($"Request #{request.Id}", notification.Message);
+    }
+
+    [Fact]
+    public async Task Notifications_RequesterSeesOwnUnreadListAndMarksRead()
+    {
+        // Seed a request whose state change will create a notification for the requester.
+        using (var seedScope = _factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
+            var request = new Request
+            {
+                CategoryId = 1,
+                Title = "Notify me",
+                Description = "Description",
+                RequesterId = "notify-requester",
+                AssigneeId = "staff-1",
+                State = RequestState.Assigned,
+                CreatedAt = DateTime.UtcNow
+            };
+            seedDb.Requests.Add(request);
+            await seedDb.SaveChangesAsync();
+
+            // Trigger the state change that emits the notification.
+            await _factory.CreateClient().AsStaff("staff-1").PutAsJsonAsync(
+                $"/api/requests/{request.Id}/state",
+                new UpdateStateDto { NewState = RequestState.InProgress, Reason = "Start" });
+        }
+
+        // Requester reads their unread notifications.
+        var requester = _factory.CreateClient().AsRequester("notify-requester");
+        var unread = await requester.GetFromJsonAsync<PagedResultDto<CivicConnect.Web.Controllers.NotificationDto>>(
+            "/api/notifications?unreadOnly=true");
+        Assert.NotNull(unread);
+        Assert.True(unread.TotalCount >= 1);
+        var notification = unread.Items[0];
+
+        // Requester cannot see another requester's notifications.
+        var other = _factory.CreateClient().AsRequester("other-requester");
+        var otherResponse = await other.GetAsync("/api/notifications?unreadOnly=true");
+        Assert.Equal(HttpStatusCode.OK, otherResponse.StatusCode);
+        var otherList = await otherResponse.Content.ReadFromJsonAsync<PagedResultDto<CivicConnect.Web.Controllers.NotificationDto>>();
+        Assert.NotNull(otherList);
+        Assert.DoesNotContain(otherList.Items, item => item.Id == notification.Id);
+
+        // Mark read.
+        var mark = await requester.PutAsync($"/api/notifications/{notification.Id}/read", null);
+        Assert.Equal(HttpStatusCode.NoContent, mark.StatusCode);
+
+        var after = await requester.GetFromJsonAsync<PagedResultDto<CivicConnect.Web.Controllers.NotificationDto>>(
+            "/api/notifications?unreadOnly=true");
+        Assert.NotNull(after);
+        Assert.DoesNotContain(after.Items, item => item.Id == notification.Id);
+
+        var all = await requester.GetFromJsonAsync<PagedResultDto<CivicConnect.Web.Controllers.NotificationDto>>(
+            "/api/notifications");
+        Assert.NotNull(all);
+        Assert.Contains(all.Items, item => item.Id == notification.Id && item.ReadAt.HasValue);
     }
 }

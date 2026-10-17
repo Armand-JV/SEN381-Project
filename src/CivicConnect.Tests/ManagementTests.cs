@@ -75,6 +75,32 @@ public class ManagementTests : IDisposable
     }
 
     [Fact]
+    public async Task Overdue_ReturnsOnlyActiveRequestsOlderThanSevenDays()
+    {
+        var now = DateTime.UtcNow;
+        foreach (var (state, createdAt) in new[]
+        {
+            (RequestState.Open, now.AddDays(-8)),
+            (RequestState.Assigned, now.AddDays(-7).AddMinutes(-1)),
+            (RequestState.InProgress, now.AddDays(-30)),
+            (RequestState.Open, now.AddDays(-7)),
+            (RequestState.Resolved, now.AddDays(-30)),
+            (RequestState.Closed, now.AddDays(-30))
+        })
+        {
+            _db.Requests.Add(new RequestBuilder().WithState(state).WithCreatedAt(createdAt).Build());
+        }
+        await _db.SaveChangesAsync();
+
+        var result = Assert.IsType<OkObjectResult>(await ControllerAs("MANAGER").GetOverdue());
+        var items = Assert.IsAssignableFrom<IEnumerable<StalledRequestDto>>(result.Value).ToList();
+
+        Assert.Equal(4, items.Count);
+        Assert.All(items, item => Assert.True(item.IsOverdue));
+        Assert.DoesNotContain(items, item => item.State is RequestState.Resolved or RequestState.Closed);
+    }
+
+    [Fact]
     public async Task Stalled_NonManagerGetsForbid_NegativeDaysGetsBadRequest()
     {
         Assert.IsType<ForbidResult>(await ControllerAs("REQUESTER").GetStalled(7));
