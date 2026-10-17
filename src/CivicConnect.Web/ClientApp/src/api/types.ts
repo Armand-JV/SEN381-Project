@@ -63,6 +63,10 @@ export interface RequesterRequestListItemDto {
   state: RequestState; stateName: string; createdAt: string;
 }
 
+export interface NotificationDto {
+  id: number; requestId: number; message: string; createdAt: string; readAt?: string | null;
+}
+
 export interface PagedResultDto<T> {
   items: T[]; page: number; pageSize: number; totalCount: number; totalPages: number;
 }

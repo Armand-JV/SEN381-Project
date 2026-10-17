@@ -8,6 +8,7 @@ import ManagerAuditPage from "./pages/ManagerAuditPage";
 import ManagerCategoriesPage from "./pages/ManagerCategoriesPage";
 import ManagerDashboardPage from "./pages/ManagerDashboardPage";
 import MyRequestsPage from "./pages/MyRequestsPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import RequestDetailPage from "./pages/RequestDetailPage";
 import StaffQueuePage from "./pages/StaffQueuePage";
 import StatusHistoryPage from "./pages/StatusHistoryPage";
@@ -19,6 +20,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function ManagerRoute({ children }: { children: React.ReactNode }) {
   return getAuth()?.role === "Manager" ? children : <Navigate replace to="/" />;
+}
+
+function RequesterRoute({ children }: { children: React.ReactNode }) {
+  return getAuth()?.role === "Requester" ? children : <Navigate replace to="/" />;
 }
 
 function HomeRoute() {
@@ -42,6 +47,7 @@ export const router = createBrowserRouter([
       { path: "requests/:requestId", element: <ProtectedRoute><RequestDetailPage /></ProtectedRoute> },
       { path: "submit", element: <ProtectedRoute><SubmitRequestPage /></ProtectedRoute> },
       { path: "my-requests", element: <ProtectedRoute><MyRequestsPage /></ProtectedRoute> },
+      { path: "notifications", element: <RequesterRoute><NotificationsPage /></RequesterRoute> },
       { path: "requests/:requestId/history", element: <ProtectedRoute><StatusHistoryPage /></ProtectedRoute> },
       { path: "requests/:requestId/feedback", element: <ProtectedRoute><FeedbackPage /></ProtectedRoute> },
     ],
