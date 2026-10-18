@@ -3,7 +3,6 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using AssignedTransitionPolicy = CivicConnect.Application.Policies.RequestStateTransitionPolicy;
 using CivicConnect.Application.Patterns.Observer;
 using CivicConnect.Application.Patterns.Strategy;
 using CivicConnect.Application.Services;
@@ -187,6 +186,7 @@ public class RequestsController : ControllerBase
             .AsNoTracking()
             .Include(r => r.Category)
             .Include(r => r.Comments)
+            .Include(r => r.History)
             .Include(r => r.Feedback)
             .FirstOrDefaultAsync(r => r.Id == id);
         if (request == null) return NotFound();
@@ -206,9 +206,26 @@ public class RequestsController : ControllerBase
             CategoryId = request.CategoryId,
             CategoryName = request.Category!.Name,
             State = request.State,
+            AllowedTransitions = User.IsInRole("STAFF") || User.IsInRole("MANAGER")
+                ? Enum.GetValues<RequestState>().Where(next => RequestStateTransitionPolicy.IsAllowed(request.State, next)).ToArray()
+                : Array.Empty<RequestState>(),
             CreatedAt = request.CreatedAt,
             RequesterId = request.RequesterId,
             AssigneeId = request.AssigneeId,
+            History = request.History
+                .OrderBy(item => item.ChangedAt)
+                .ThenBy(item => item.Id)
+                .Select(item => new StatusHistoryDto
+                {
+                    Id = item.Id,
+                    RequestId = item.RequestId,
+                    PreviousState = item.PreviousState,
+                    NewState = item.NewState,
+                    ChangedAt = item.ChangedAt,
+                    ChangedBy = item.ChangedBy,
+                    Reason = item.Reason
+                })
+                .ToList(),
             Feedback = request.Feedback is null ? null : new FeedbackDto
             {
                 Id = request.Feedback.Id,
@@ -241,6 +258,8 @@ public class RequestsController : ControllerBase
 
         var request = await _context.Requests.FindAsync(id);
         if (request == null) return NotFound();
+
+        if (!_accessControl.CanAccess(User, request)) return Forbid();
 
         var actor = GetActor();
         if (User.IsInRole("REQUESTER"))
@@ -281,6 +300,12 @@ public class RequestsController : ControllerBase
             .AsNoTracking()
             .Include(request => request.Category)
             .AsQueryable();
+
+        if (!User.IsInRole("MANAGER"))
+        {
+            var actor = GetActor();
+            query = query.Where(request => request.AssigneeId == null || request.AssigneeId == actor);
+        }
 
         if (state.HasValue)
         {
@@ -345,7 +370,7 @@ public class RequestsController : ControllerBase
         if (request == null) return NotFound();
         if (!_accessControl.CanAccess(User, request)) return Forbid();
 
-        if (!AssignedTransitionPolicy.IsAllowed(request.State, RequestState.Assigned))
+        if (!RequestStateTransitionPolicy.IsAllowed(request.State, RequestState.Assigned))
         {
             return Conflict("Only open requests can be assigned.");
         }
@@ -373,11 +398,19 @@ public class RequestsController : ControllerBase
             CreatedAt = now,
             Details = $"Assigned to {assigneeId}."
         });
+        _context.Notifications.Add(new Notification
+        {
+            RequestId = request.Id,
+            RecipientId = request.RequesterId,
+            Message = $"Request #{request.Id} was assigned.",
+            CreatedAt = now
+        });
 
         await _context.SaveChangesAsync();
         await _notifier.NotifyStateChangedAsync(request, RequestState.Open, RequestState.Assigned);
-
-        return Ok(request);
+        // Return projection to avoid serializing the tracked entity graph
+        // (Request <-> Notification navigation cycle) back to callers.
+        return Ok(new { request.Id, State = request.State, AssigneeId = request.AssigneeId });
     }
 
     [HttpPut("{id}/state")]
@@ -418,6 +451,7 @@ public class RequestsController : ControllerBase
         });
 
         // NFR-020 (Issue #35): append-only audit entry in the same transaction.
+        var changedAt = DateTime.UtcNow;
         _context.AuditLogs.Add(new AuditLog
         {
             Actor = actor,
@@ -426,8 +460,15 @@ public class RequestsController : ControllerBase
             EntityId = request.Id,
             BeforeSummary = oldState.ToString(),
             AfterSummary = request.State.ToString(),
-            Timestamp = DateTime.UtcNow,
+            Timestamp = changedAt,
             CorrelationId = Guid.NewGuid().ToString()
+        });
+        _context.Notifications.Add(new Notification
+        {
+            RequestId = request.Id,
+            RecipientId = request.RequesterId,
+            Message = $"Request #{request.Id} status changed to {request.State}.",
+            CreatedAt = changedAt
         });
 
         await _context.SaveChangesAsync();
@@ -435,7 +476,14 @@ public class RequestsController : ControllerBase
         // Notify observers (Design Problem 1: Observer)
         await _notifier.NotifyStateChangedAsync(request, oldState, request.State);
 
-        return Ok(request);
+        // Return projection to avoid serializing the tracked entity graph
+        // (Request <-> Notification navigation cycle) back to callers.
+        return Ok(new
+        {
+            request.Id,
+            State = request.State,
+            AssigneeId = request.AssigneeId
+        });
     }
 
     private string GetActor() =>
@@ -480,6 +528,7 @@ public class RequestDetailDto
     public DateTime CreatedAt { get; set; }
     public string RequesterId { get; set; } = string.Empty;
     public string? AssigneeId { get; set; }
+    public IReadOnlyList<RequestState> AllowedTransitions { get; set; } = Array.Empty<RequestState>();
     public IReadOnlyList<StatusHistoryDto> History { get; set; } = Array.Empty<StatusHistoryDto>();
     public FeedbackDto? Feedback { get; set; }
     public IReadOnlyList<RequestCommentDto> Comments { get; set; } = Array.Empty<RequestCommentDto>();

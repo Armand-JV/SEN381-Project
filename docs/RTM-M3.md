@@ -2,8 +2,8 @@
 
 **Baseline:** M1 requirements, continued by Milestone 2 PED v2.0 §E (RTM v2.0).  
 **Scope:** Staff requirements FR-007–FR-013 and security NFR-017–NFR-019 for issue #86.  
-**Related CI evidence:** Issue #69; `.github/workflows/test.yml`; `docs/Milestone 3/PED-Section-5-CI-and-Coverage.md`.  
-**Current branch evidence:** https://github.com/Armand-JV/SEN381-Project/actions/runs/38742180022/job/116446413398?pr=135; hosted CI run URL is added only after an actual run.  
+**Related CI evidence:** Issue #69; `.github/workflows/test.yml`; `docs/Milestone 3/Individual M3 documents/PED-Section-5-CI-and-Coverage.md`.  
+**Historical CI evidence:** [run #38742180022](https://github.com/Armand-JV/SEN381-Project/actions/runs/38742180022/job/116446413398?pr=135); this predates current M4 changes.  
 **Local verification updated 2026-10-16:** Full suite: 119 passed, 0 failed, 0 skipped before the latest assertion change. Focused `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate`: 1 passed, 0 failed after the change. Hosted CI: successful `build-and-test` job for commit `ab65886` on 2026-10-16 ([run #38939041921](https://github.com/Armand-JV/SEN381-Project/actions/runs/38939041921/job/117101739558?pr=143)).
 **Coverage limit:** Cobertura execution counts do not prove requirement satisfaction, assertion quality, authorization completeness, or production-configuration behavior. Critical gaps remain listed in the PED §5 note and row statuses below.
 **AI record:** `docs/P2-AI-Usage-Register.md`; requester-slice entries: `docs/P1-AI-Usage-Register.md`; human verification remains pending before merge.
@@ -55,7 +55,7 @@ M3 issue titles were inferred before PED v2 was present. The crosswalk below pre
 - PED v2 proposed State objects; current implementation uses `RequestStateTransitionPolicy` with a central table. This is a Changed design implementation; behavior is tested, but design conformance is not claimed.
 - PED's proposed Reolved→InProgress reopen path is not present. The current policy has terminal `Closed`, `Cancelled`, and `Rejected` states. Full VT-011/VT-013 coverage therefore remains open.
 - Staff scope restriction beyond role authorization is not present in current `GetRequest`; do not mark FR-007/NFR-019 complete.
-- Coverage is reported separately in `docs/Milestone 3/PED-Section-5-CI-and-Coverage.md`; line/branch coverage never substitutes for these behavioral claims.
+- Coverage is reported separately in `docs/Milestone 3/Individual M3 documents/PED-Section-5-CI-and-Coverage.md`; line/branch coverage never substitutes for these behavioral claims.
 
 ## Carried-forward PED rows outside this slice
 
