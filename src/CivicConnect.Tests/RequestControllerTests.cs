@@ -550,6 +550,30 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
+    public async Task AssignRequest_StaffOutsideAssignment_ReturnsForbiddenAndLeavesRequestUnchanged()
+    {
+        var request = await SeedRequest(
+            RequestState.Open,
+            requesterId: "requester-scope",
+            assigneeId: "staff-owner");
+
+        var response = await _factory.CreateClient().AsStaff("staff-outsider").PutAsJsonAsync(
+            $"/api/requests/{request.Id}/assign",
+            new AssignRequestDto { AssigneeId = "staff-next", Reason = "Reassign request" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+        using var verificationScope = _factory.Services.CreateScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
+        var persisted = verificationDb.Requests.Single(item => item.Id == request.Id);
+
+        Assert.Equal(RequestState.Open, persisted.State);
+        Assert.Equal("staff-owner", persisted.AssigneeId);
+        Assert.Empty(verificationDb.StatusHistories.Where(item => item.RequestId == request.Id));
+        Assert.Empty(verificationDb.AuditEntries.Where(item => item.RequestId == request.Id));
+    }
+
+    [Fact]
     public async Task UpdateState_StaffOutsideScope_ReturnsForbiddenAndLeavesRequestUnchanged()
     {
         using var scope = _factory.Services.CreateScope();
