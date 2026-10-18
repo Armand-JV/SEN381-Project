@@ -1,0 +1,135 @@
+# CivicConnect Requirements Traceability Matrix — M3 continuation
+
+**Baseline:** M1 requirements, continued by Milestone 2 PED v2.0 §E (RTM v2.0).  
+**Scope:** Staff requirements FR-007–FR-013 and security NFR-017–NFR-019 for issue #86.  
+**Related CI evidence:** Issue #69; `.github/workflows/test.yml`; `docs/Milestone 3/PED-Section-5-CI-and-Coverage.md`.  
+**Current branch evidence:** https://github.com/Armand-JV/SEN381-Project/actions/runs/38742180022/job/116446413398?pr=135; hosted CI run URL is added only after an actual run.  
+**Verification completed 2026-10-15:** 59 tests passed; coverage-summary self-test passed; format verification passed. Hosted CI evidence remains pending.
+**Coverage limit:** Cobertura execution counts do not prove requirement satisfaction, assertion quality, authorization completeness, or production-configuration behavior. Critical gaps remain listed in the PED §5 note and row statuses below.
+**AI record:** `docs/P2-AI-Usage-Register.md`; requester-slice entries: `docs/P1-AI-Usage-Register.md`; human verification remains pending before merge.
+
+## Status vocabulary
+
+- **Planned:** baseline item has a defined design or verification plan, but no current evidence.
+- **In Development:** implementation or verification is incomplete.
+- **Implemented:** repository implementation exists, but end-to-end evidence is incomplete.
+- **Verified:** matching test evidence demonstrates the stated acceptance criterion; this does not imply complete production assurance.
+- **Changed:** implementation intentionally differs from baseline and needs a recorded decision or acceptance.
+- **Deferred:** team explicitly postponed requirement work; no evidence claim is made.
+
+## M2-to-M3 crosswalk
+
+M3 issue titles were inferred before PED v2 was present. The crosswalk below preserves baseline IDs and prevents those provisional titles from changing requirement meaning.
+
+| M3 issue label | Baseline requirement actually mapped | Note |
+|---|---|---|
+| #22 / M3 issue provisional FR-007 | FR-007 and AC-007 | Staff visibility and relevant scope; queue/filter work also supports FR-008. |
+| #22 / M3 issue provisional FR-008 | FR-008 and AC-008 | Filter/search/sort requirement; assignment is baseline FR-010. |
+| #23 / M3 issue provisional FR-010 | FR-010 and AC-010 | Assignment/accept responsibility; PED CR-003 corrects the source typo `AC-0010` to `AC-010`. |
+| #24 / M3 issue provisional FR-009/FR-011 | FR-011 and AC-011 | Controlled, verified status updates; baseline FR-009 is full request detail. |
+| #25 / M3 issue provisional FR-010 | FR-012 and AC-012 | Actions, comments and resolution information; not observer registration. |
+| #27 / M3 issue provisional FR-012 | Design/Observer evidence; not baseline FR-012 comments | Observer evidence is retained as supporting design evidence, not substituted for comment evidence. |
+| #120 | NFR-017, NFR-018, NFR-019 | Authentication, role authorization and sensitive-object handling. |
+| #86 | FR-007–FR-013 and NFR-017–NFR-019 | This RTM continuation. |
+
+## Staff and security traceability
+
+| ID and exact M1 requirement | Acceptance criterion | PED v2 design / architecture trace | Implementation evidence | Baseline verification / M3 evidence | Expected result | Status / gap |
+|---|---|---|---|---|---|---|
+| **FR-007** — The system shall allow authorised staff to view service requests relevant to their roles and permissions. | **AC-007:** Users can view relevant requests. Requests outside authorised access are unavailable. | ASR-1; Identity & Access + Request Management; ADR-003; PED §B.2 list/detail contract; VT-007. | `src/CivicConnect.Web/Controllers/RequestsController.cs`: `GetStaffRequests`, `GetRequest`; staff endpoints have `STAFF,MANAGER` authorization. | `docs/Tests/github_issues_22-25_test_evidence.md`: TC-22-01; `RequestControllerTests.GetStaffRequests_Requester_ReturnsForbidden`; `GetRequest_OtherRequester_ReturnsForbidden`. No test proves a staff member cannot read an assigned-out-of-scope object. | Authorized staff sees permitted requests; requester or out-of-scope actor receives denial or deliberate non-disclosure. | **In Development.** Role gate verified; staff object scope rule is not implemented/evidenced. Related NFR-019, FR-013, risk R6. |
+| **FR-008** — The system shall allow authorised staff to filter, search and/or sort service requests using attributes of the relevant request. | **AC-008:** Users can move between requests using at least one defined attribute. Results shown match selected attribute. | ASR-5; Request Management query; ADR-002/007; VT-008. | `RequestsController.GetStaffRequests`: state, category, assignee filters, paging and created-date ordering. | `docs/Tests/github_issues_22-25_test_evidence.md`: TC-22-01; `RequestControllerTests.GetStaffRequests_CombinesFiltersAndPaging`. | Returned items match selected filters and paging metadata is consistent. | **Verified** for implemented state/category/assignee filters and paging; search is not implemented and supplied evidence does not establish every possible sort/filter. |
+| **FR-009** — The system will allow staff to view the full details pertaining to their service requests. | **AC-009:** System displays selected request as well as all its attributes and details. | Request Management detail; ADR-003/007; VT-009. | `RequestsController.GetRequest`: loads category/comments and returns request detail; requester ownership check and internal-comment filtering. | `RequestControllerTests.GetRequest_SeededRequestIncludesComment`, `GetRequest_StaffCanSeeInternalComments`; historical API GET evidence in `docs/Tests/github_issues_22-25_test_evidence.md`. | Authorized staff receives selected request details; unauthorized caller cannot retrieve it. | **In Development.** Detail and ownership behavior have evidence; no dedicated assertion proves every baseline attribute. |
+| **FR-010** — The system will allow authorised staff to assign and/or accept responsibility of service requests. | **AC-010** (PED CR-003 corrected source `AC-0010`): Unauthorised staff cannot modify responsibility assignments. Assigned staff is recorded with relevant request. | ASR-1/ASR-5; Request Management; ADR-003/006/007; VT-010. | `RequestsController.AssignRequest`: staff/manager authorization, Open→Assigned transition, `AssigneeId`, history and audit entry. | `RequestControllerTests.AssignRequest_UpdatesStateHistoryAndAuditWithActor`; `AssignRequest_Requester_ReturnsForbiddenAndLeavesRequestOpen`; manual TC-23-01/02 in `docs/Tests/github_issues_22-25_test_evidence.md`. | Authorized assignment persists assignee and history; requester cannot change assignment. | **Verified** for endpoint behavior covered by tests. Real identity-provider validation and staff scope remain outside test-host evidence. |
+| **FR-011** — The system will allow authorised staff to update service requests through controlled and verified processes. | **AC-011:** Authorized staff can update request status. Only verified status transitions recorded. | ASR-2; Request Management lifecycle + Audit; ADR-004/006; VT-011. | `src/CivicConnect.Application/Policies/RequestStateTransitionPolicy.cs`; `RequestsController.UpdateState`; status history and audit writes. | `RequestControllerTests.UpdateState_ClosedToOpen_ReturnsBadRequest`, `UpdateState_IllegalTransition_LeavesRequestUnchanged`, `UpdateState_ReasonRequiredWithoutReason_ReturnsBadRequestAndLeavesRequestOpen`, `UpdateState_ValidTransition_PersistsOneHistoryRowWithActor`; manual TC-24-01–07. | Legal transition changes state and creates expected history; illegal or missing-reason transition leaves state/history unchanged. | **In Development.** Core policy evidence exists, but M2 planned VT-011 claims all 7 legal transitions, all rejected pairs, roles and exactly-one audit/history are not fully executed here. PED State-pattern design is **Changed** to a central transition table; record/approve change separately. |
+| **FR-012** — The system will allow authorised staff to track relevant actions, comments and resolution information of relevant service requests. | **AC-012:** Authorized staff can select request and track relevant actions, comments and resolution status. | Request Management + Audit; ADR-003/004/005/007; VT-012. | `RequestsController.AddComment`; `Comment` persistence and internal/public visibility; `GetRequest` filtering. | `RequestControllerTests.AddComment_StaffInternalComment_HiddenFromRequester`, `AddComment_RequesterPublicComment_PersistsAuthenticatedActor`, `GetRequest_StaffCanSeeInternalComments`; manual TC-25-01–06 in `docs/Tests/github_issues_22-25_test_evidence.md`. | Authorized staff can record/retrieve relevant comments/actions; requester cannot see internal comments. | **In Development.** Comment creation and visibility have evidence; dedicated resolution-information assertion remains absent. Observer evidence in `docs/Tests/issue_27_observer_test_evidence.md` is separate supporting design evidence.
+| **FR-013** — The system will allow authorised staff to resolve or close service requests relevant to their roles or responsibilities. | **AC-013:** Authorized staff can mark service request resolved or closed. Requester can see relevant change on request. | ASR-2; Request Management lifecycle; ADR-004/006; VT-013. | `RequestsController.UpdateState`; policy allows InProgress→Resolved and Resolved→Closed; requester detail endpoint returns state subject to ownership. | Manual TC-24-03/04; `RequestControllerTests.UpdateState_ValidTransition_ReturnsOkAndPersistsHistory`; no complete requester-after-transition journey in current suite. | Staff resolves/closes; owner sees new state and history. | **In Development.** Staff transitions have evidence; requester-visible end-to-end verification and full role/scope criterion remain incomplete. |
+| **NFR-017** — Before access to functionality and requested information is given, users are verified. | **AC-017:** Authorized users are granted permission in accordance with roles. Unauthorized users cannot access functionality. | ASR-1; Identity & Access; ADR-003; VT-017. | `Program.cs`: JWT bearer authentication, authorization middleware; controller `[Authorize]`; `GetActor()` uses authenticated claims. | `RequestControllerTests.CreateRequest_AnonymousCallerReturnsUnauthorized`, `GetRequest_Anonymous_ReturnsUnauthorized`, `AddComment_Anonymous_ReturnsUnauthorized`; `TestHeaderAuthenticationHandler` supplies test identities only in `Testing`. | Unauthenticated requests receive 401; authenticated principal supplies actor identity. | **Implemented / test-host verified.** Production JWT issuer/audience/secret validation is not exercised by API tests; hosted CI evidence pending. |
+| **NFR-018** — Role-based authorisation is used so users can only perform actions suitable for their respective roles. | **AC-018:** Unauthorized actions are not committed; authorized actions complete. | ASR-1; Identity & Access; ADR-003; VT-018. | Endpoint role attributes in `RequestsController`; `TestAuthenticationHelper` roles REQUESTER/STAFF/MANAGER; `Program.cs` authorization. | `GetStaffRequests_Requester_ReturnsForbidden`, `AssignRequest_Requester_ReturnsForbiddenAndLeavesRequestOpen`, successful staff assignment/state tests. | Wrong role receives 403 and causes no state/data change; permitted role succeeds. | **Implemented / test-host verified.** Authorization is endpoint attributes rather than a single central policy service; test host is not production JWT validation. |
+| **NFR-019** — Sensitive request information will only be made available to staff with relevant authorisation. | **AC-019:** Retrieval of request information is declined without proper authorisation. | ASR-1; Identity & Access + Request Management; ADR-003; VT-019; OWASP object-level access boundary. | `RequestsController.GetRequest`: requester ownership check and internal-comment filtering; endpoint roles. | `RequestControllerTests.GetRequest_OtherRequester_ReturnsForbidden`, `GetRequest_RequesterCannotSeeInternalComments`, `GetRequest_StaffCanSeeInternalComments`; manual TC-25-06. | Unauthenticated/unauthorized retrieval denied; requester sees own public data only; authorized staff sees permitted internal data. | **In Development.** Requester ownership/internal filtering evidenced; assigned staff object-level scope is not enforced, so full NFR remains open. |
+
+## Evidence limits and deviations
+
+- Evidence above is repository-local or historical manual evidence. No hosted CI run URL is fabricated; add it after a real run.
+- Test authentication uses `TestHeaderAuthenticationHandler` only in the `Testing` environment. It proves controller authorization wiring, not production JWT configuration or an identity provider.
+- PED v2 planned `/api/v1` endpoints; current implementation uses `/api`. This is a Changed interface decision requiring team acceptance.
+- PED v2 proposed State objects; current implementation uses `RequestStateTransitionPolicy` with a central table. This is a Changed design implementation; behavior is tested, but design conformance is not claimed.
+- PED's proposed Reolved→InProgress reopen path is not present. The current policy has terminal `Closed`, `Cancelled`, and `Rejected` states. Full VT-011/VT-013 coverage therefore remains open.
+- Staff scope restriction beyond role authorization is not present in current `GetRequest`; do not mark FR-007/NFR-019 complete.
+- Coverage is reported separately in `docs/Milestone 3/PED-Section-5-CI-and-Coverage.md`; line/branch coverage never substitutes for these behavioral claims.
+
+## Carried-forward PED rows outside this slice
+
+PED v2 §E rows FR-014–FR-016 and NFR-020–NFR-024 remain part of the baseline and are not reassessed here. Owners must continue those rows in the same matrix rather than creating a second competing RTM.
+
+## Requester traceability (FR-001–FR-006)
+
+Implementation and tests land on `feature/Fr-01-to-06` (issues #15, #16, #17, #18, #19, #20). Evidence: `RequesterSliceTests`, existing `RequestControllerTests`, `docs/Tests/requester-slice.md`. Hosted CI evidence pending; statuses below are repository-local.
+
+| ID and requirement | Acceptance criterion | Implementation evidence | Verification evidence | Status / gap |
+|---|---|---|---|---|
+| **FR-001** Submit validated service request as authenticated requester | Valid submission persists request + initial history and returns DTO; invalid input rejected without persistence | `RequestsController.CreateRequest`: title required ≤200 trimmed, description required ≤2000 trimmed, category required/valid, `GetActor()` from principal, `CreatedRequestDto` with numeric `Id` | `RequesterSliceTests.CreateRequest_InvalidInput_ReturnsFieldValidationAndPersistsNothing`, `CreateRequest_MaxLengthsAccepted_AndOverLimitRejected`; `RequestControllerTests.CreateRequest_*` | **Implemented.** Field limits are the implementation contract (200/2000), not re-derived from an M1 AC; hosted CI pending. |
+| **FR-002** Category selection and category-specific validation | Requester chooses a category; strategies selected by category ID govern validation | `GET /api/categories` (`CategoriesController`); `CategoryValidationContext` + `Category1ValidationStrategy` registered in `Program.cs` | `RequesterSliceTests.Categories_ReturnSeededDtos`; `RequestControllerTests.Program_Registration_IncludesConcreteObserver` (strategy DI); strategy unit tests | **Implemented.** Only Category 1 has a dedicated strategy; others fall back to non-empty title/description. |
+| **FR-003** Unique request reference | Each request has a unique reference | Numeric `Request.Id` (user-accepted decision); referenced as `Request #<Id>` in UI and `CreatedAtAction` location | `RequestControllerTests.CreateRequest_ValidSubmission_ReturnsCreatedDtoAndPersistsInitialHistory` asserts unique Id/location | **Verified** against the accepted numeric-ID interpretation. |
+| **FR-004** Requester views own requests and status | Requester sees only own requests with readable status; ownership from authenticated actor | `GET /api/requests/mine` (REQUESTER-only, paged, `StateName`, category summary); `GetRequest` ownership via `IAccessControlService`, internal comments filtered | `RequesterSliceTests.GetMyRequests_UsesActorAndReturnsPagedStateAndCategory`, `GetMyRequests_InvalidPaging_ReturnsBadRequest`, `RequestDetail_ProjectsSafeDtoAndFiltersInternalComments`; `RequestControllerTests.GetRequest_OtherRequester_ReturnsForbidden` | **Verified** in test host for ownership, paging, readable state, internal-comment exclusion. Production JWT not exercised. |
+| **FR-005** Requester views status history timeline | Full transition history visible to authorised viewer, ordered by time, including initial entry and reason | `GET /api/requests/{id}/history`: `ChangedAt` then `Id` order, ownership enforced, `Reason` included (decision: requesters may see reasons) | `RequesterSliceTests.GetHistory_IncludesInitialAndChronologicallyOrdersRows_AndEnforcesOwnership` | **Verified** in test host. |
+| **FR-006** Requester feedback on completed request | Owner may submit one feedback on Resolved/Closed request; duplicates and early submissions rejected | `Feedback` entity + migration `20261015173818_AddFeedback` (unique `RequestId` index, cascade delete); `POST/GET /api/requests/{id}/feedback`: REQUESTER-only owner check, Resolved/Closed gate, rating 1–5, optional comment ≤2000, application + DB duplicate rejection | `RequesterSliceTests.Feedback_RequiresCompletionAndValidOwner`, `Feedback_RejectsNonOwnerInvalidRatingAndDuplicate`, `Feedback_CommentOverLimitReturnsBadRequest` | **Implemented.** Rating range and comment limit are the implementation contract; DB uniqueness enforced on PostgreSQL and application check works on both providers. |
+
+### Requester-slice decisions
+
+- **FR-003:** numeric `Request.Id` accepted as the unique human-readable reference; no `ReferenceNumber` column added.
+- **FR-005:** history `Reason` is shown to requesters.
+- Field limits (title 200, description 2000, feedback comment 2000, rating 1–5) are recorded as the implemented contract; they are not claimed to match unverified M1 wording.
+
+## Management traceability (FR-014–FR-016, NFR-020, NFR-024 — P3, M3-RTM-04 #87)
+
+FR-015/FR-016 AC wording is authored by P3 (no baseline AC existed; see `docs/P3-Decisions.md`).
+FR-014/NFR-020/NFR-024 trace to the M1 baseline via PED v2 §E (carried forward, not reassessed).
+
+| ID and requirement | Acceptance criterion | Implementation evidence | Verification evidence | Status / gap |
+|---|---|---|---|---|
+| **FR-014** Management dashboard: request counts by state/category with filters | Manager sees reconciling counts (total, by state, by category) under state/category/assignee/date filters | `ReportsController.GET requests-summary` (ADMIN/MANAGER only); query shaped to M3-DATA-01 indexes | `DashboardSummaryTests` (TC-U-06): counts reconcile, filters combine, non-manager Forbid; live 200/403/401 on shared DB | **Verified** in test host + live. Age buckets deferred by team decision. |
+| **FR-015** Management oversight: stalled list + reassign | Manager lists Open/Assigned requests at least N days old (default 7, plain age filter) and reassigns them; each reassign writes history + audit | `ManagementController`: `GET stalled`, `PUT reassign/{id}` (ADMIN/MANAGER only); transition policy; StatusHistory + `Reassigned` AuditLog in one transaction | `ManagementTests`: stalled filtering/order/guards, Open→Assigned + Assigned-stays reassign with history/audit assertions, Forbid/NotFound/BadRequest cases | **Verified** in test host. No "overdue" semantics (CR-002 open); production JWT not exercised. |
+| **FR-016** Category administration | Manager creates/renames categories; names non-empty and unique; unknown id gives 404 | `ManagementController`: `POST/PUT categories` (ADMIN/MANAGER only); no schema change | `ManagementTests`: create + duplicate-conflict + blank-reject + forbid; rename + unknown-404 | **Verified** in test host. |
+| **NFR-020** Audit trail for consequential actions | Every state change writes exactly one append-only audit entry in the same transaction; manager-only reads | `AuditLog` entity + migration `M3P3AuditLogAndQueryIndexes`; `UpdateState`/`Reassign` write `StateChanged`/`Reassigned` entries; `GET /api/audit` (ADMIN/MANAGER only, no write path) | `AuditLogTests`: exactly-one-entry, manager-read/requester-forbid; live audit read on shared DB | **Verified** in test host + live. Assignment via P2 endpoint writes the separate `AuditEntries` table (one-table decision pending). |
+| **NFR-024** Responsive everyday operations (CR-001: ≥95% within 3s) | Dashboard filtering p95 within 3s with zero errors under the defined workload | M3-DATA-01 indexes; NBomber scenario `src/CivicConnect.Perf` (10 VUs × 2 min, 1k rows, local scratch DB) | TC-P-01 run 2026-10-15: 109,525 reqs, p95 23.71ms — PASS; limits recorded in `docs/P3-Decisions.md` | **Verified** within stated limits (localhost only; no production claim). |
+
+## M4 final continuation and M1 acceptance-criterion reconciliation
+
+The rows above record M3 evidence for the final integrated slice available at release-candidate commit `a1e189b`. PED v4.0 (this branch) now reconciles the full M1 commitment baseline of 24 acceptance criteria against the repository final baseline inspected at `70a36fb9ad99e1a51bcaab43741d2845c8d04833` (2026-10-17).
+
+### M4 final status table
+
+| M1 ID | Acceptance criterion | Final status | Final evidence reference |
+|---|---|---|---|
+| AC-001 | Valid submission creates request; missing info rejected | Met | `RequesterSliceTests.CreateRequest_InvalidInput_ReturnsFieldValidationAndPersistsNothing`; `RequestControllerTests.CreateRequest_*` |
+| AC-002 | Controlled category selection; invalid rejected | Met | `GET /api/categories`; `CategoryValidationContext`; category strategy tests |
+| AC-003 | Unique request identifier | Met | Numeric `Request.Id`; `CreateRequest_ValidSubmission_ReturnsCreatedDtoAndPersistsInitialHistory` |
+| AC-004 | Requester views own requests and status | Met | `GetMyRequests_*`; `JwtAuthFlowTests.RegisterCreateListRead_WithRealJwt_PreservesOwnershipAndRoleRestrictions` |
+| AC-005 | Requester views status history | Met | `GetHistory_IncludesInitialAndChronologicallyOrdersRows_AndEnforcesOwnership` |
+| AC-006 | Meaningful feedback/notification on status change | Not Met | `RequestStateNotifier`; `issue_27_observer_test_evidence.md`; log-only best-effort delivery; TD-03 |
+| AC-007 | Staff views relevant requests; outside unavailable | Partially Met | Staff role gates; `GetRequest_StaffOutsideAssignment_ReturnsForbidden`; queue scope gap noted in PED v4.0 |
+| AC-008 | Staff filter/search/sort by attributes | Met | `GetStaffRequests_CombinesFiltersAndPaging`; state/category/assignee filters; search deferred (TD-10) |
+| AC-009 | Staff view full request details | Partially Met | `GetRequest_SeededRequestIncludesComment`; exhaustive detail assertions absent |
+| AC-010 | Assignment recorded; unauthorised refused | Met | `AssignRequest_UpdatesStateHistoryAndAuditWithActor`; requester-forbidden assignment test |
+| AC-011 | Controlled transitions recorded; only authorised transitions | Partially Met | `RequestStateTransitionPolicy`; `UpdateState_ClosedToOpen_ReturnsBadRequest`; complete permutation matrix untested |
+| AC-012 | Track actions/comments/resolution information | Partially Met | `AddComment_*`; internal/public visibility tests; dedicated resolution-information assertion absent |
+| AC-013 | Resolve/close requests; requester sees change | Met | `UpdateState_ValidTransition_ReturnsOkAndPersistsHistory`; `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate` |
+| AC-014 | Management views activity including major changes | Met | `DashboardSummaryTests`; `ManagementTests`; `AuditLogTests`; `/api/audit` |
+| AC-015 | Identify open, overdue, closed and resolved | Partially Met | `/api/reports/requests-summary`; age/stalled filtering works; overdue semantics undefined (CR-002) |
+| AC-016 | View requests by category, status and/or other criteria | Met | Dashboard/filter endpoints; `DashboardSummaryTests` filter combination |
+| AC-017 | Authorisation before protected access | Met | JWT bearer configuration; `[Authorize]`; anonymous tests; real app-issued JWT flow tested |
+| AC-018 | Role-based authorisation limits actions | Met | Role attributes; `GetStaffRequests_Requester_ReturnsForbidden`; auth service tests |
+| AC-019 | Sensitive information restricted to authorised staff | Partially Met | Ownership/internal-comment tests; staff-scope gap in queue |
+| AC-020 | Major changes tracked; actor recorded | Met | `AuditLogTests`; assignment state/audit writes; one-table cleanup open (TD-04) |
+| AC-021 | Clear labels, validation and feedback | Partially Met | API problem details; validation tests; React SPA pages; no formal usability evaluation recorded |
+| AC-022 | Request persists and remains retrievable | Met | EF/PostgreSQL migrations; initial-history tests; `DatabaseConnectionTests` |
+| AC-023 | Modular components support isolated change | Partially Met | Layered projects; patterns; direct DbContext use and unused repositories remain TD-01 |
+| AC-024 | ≥95% of operations within 3s under defined load | Met (within stated limits) | TC-P-01: 109,525 requests, 0 errors, p95 23.71 ms; localhost only |
+
+### Evidence and limitation summary
+
+- **Scope arithmetic:** 14 Met + 9 Partially Met + 1 Not Met = 18.5 / 24 = **77.1%**. This is below the target of 80%. No approved scope change is claimed.
+- **Historical context:** M3 rows record verified evidence at `a1e189b`. This M4 continuation does not alter those rows; it adds a reconciliation view for every original M1 acceptance criterion and links each to exact implementation/test/defect and register references.
+- **Pending verification:** The 118-test local run (2026-10-16) is historical. A fresh test run against the final assessed commit is pending. Hosted CI/governance/run evidence is pending. Human review of AI-assisted artefacts is pending where registers record it as such.
+- **Production readiness:** Current deployment evidence supports staging/demo use. Production is not evidenced. See PED v4.0 Section 6 for the staged no-go decision and required remediation.
+- **Final RTM freeze:** On team freeze, update the `Assessed commit/tag` row above to match the frozen release and record the human reviewer date.
