@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using System.Threading.Tasks;
 using CivicConnect.Web.Data;
@@ -25,18 +24,11 @@ public class AuditController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetAuditLogs(
         [FromQuery] string? entityType,
-        [FromQuery] int? entityId,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50)
+        [FromQuery] int? entityId)
     {
         if (!User.IsInRole("ADMIN") && !User.IsInRole("MANAGER"))
         {
             return Forbid();
-        }
-
-        if (page < 1 || pageSize < 1 || pageSize > 100)
-        {
-            return BadRequest("Page must be at least 1 and pageSize must be between 1 and 100.");
         }
 
         var query = _context.AuditLogs.AsNoTracking().AsQueryable();
@@ -51,21 +43,11 @@ public class AuditController : ControllerBase
             query = query.Where(a => a.EntityId == entityId.Value);
         }
 
-        var totalCount = await query.CountAsync();
         var logs = await query
             .OrderByDescending(a => a.Timestamp)
-            .ThenByDescending(a => a.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Take(200)
             .ToListAsync();
 
-        return Ok(new PagedResultDto<Domain.Entities.AuditLog>
-        {
-            Items = logs,
-            Page = page,
-            PageSize = pageSize,
-            TotalCount = totalCount,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-        });
+        return Ok(logs);
     }
 }

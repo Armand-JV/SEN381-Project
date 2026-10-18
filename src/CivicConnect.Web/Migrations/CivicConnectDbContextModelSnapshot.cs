@@ -216,40 +216,6 @@ namespace CivicConnect.Web.Migrations
                     b.ToTable("Feedback");
                 });
 
-            modelBuilder.Entity("CivicConnect.Domain.Entities.Notification", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("ReadAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("RecipientId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("RequestId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RequestId");
-
-                    b.HasIndex("RecipientId", "CreatedAt");
-
-                    b.ToTable("Notifications");
-                });
-
             modelBuilder.Entity("CivicConnect.Domain.Entities.Request", b =>
                 {
                     b.Property<int>("Id")
@@ -422,17 +388,6 @@ namespace CivicConnect.Web.Migrations
                     b.Navigation("Request");
                 });
 
-            modelBuilder.Entity("CivicConnect.Domain.Entities.Notification", b =>
-                {
-                    b.HasOne("CivicConnect.Domain.Entities.Request", "Request")
-                        .WithMany("Notifications")
-                        .HasForeignKey("RequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Request");
-                });
-
             modelBuilder.Entity("CivicConnect.Domain.Entities.Request", b =>
                 {
                     b.HasOne("CivicConnect.Domain.Entities.Category", "Category")
@@ -462,8 +417,6 @@ namespace CivicConnect.Web.Migrations
                     b.Navigation("Feedback");
 
                     b.Navigation("History");
-
-                    b.Navigation("Notifications");
                 });
 #pragma warning restore 612, 618
         }

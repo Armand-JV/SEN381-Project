@@ -84,7 +84,6 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         }
 
         db.AuditLogs.ExecuteDelete();
-        db.Notifications.ExecuteDelete();
         db.Users.ExecuteDelete();
         db.StatusHistories.ExecuteDelete();
         db.Feedback.ExecuteDelete();

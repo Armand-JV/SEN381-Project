@@ -94,41 +94,6 @@ public class AuditLogTests : IDisposable
     }
 
     [Fact]
-    public async Task AuditRead_PaginatesFilteredEntries()
-    {
-        for (var index = 0; index < 3; index++)
-        {
-            _db.AuditLogs.Add(new AuditLog
-            {
-                Actor = "boss",
-                Action = "StateChanged",
-                EntityType = nameof(Request),
-                EntityId = 1,
-                Timestamp = DateTime.UtcNow.AddMinutes(index)
-            });
-        }
-        _db.AuditLogs.Add(new AuditLog
-        {
-            Actor = "boss",
-            Action = "Other",
-            EntityType = "User",
-            EntityId = 2,
-            Timestamp = DateTime.UtcNow
-        });
-        await _db.SaveChangesAsync();
-
-        var controller = new AuditController(_db);
-        SetUser(controller, "boss", "MANAGER");
-        var result = Assert.IsType<OkObjectResult>(await controller.GetAuditLogs("Request", 1, page: 2, pageSize: 2));
-        var page = Assert.IsType<PagedResultDto<AuditLog>>(result.Value);
-
-        Assert.Equal(3, page.TotalCount);
-        Assert.Equal(2, page.TotalPages);
-        Assert.Single(page.Items);
-        Assert.IsType<BadRequestObjectResult>(await controller.GetAuditLogs(null, null, page: 0));
-    }
-
-    [Fact]
     public async Task AuditRead_ManagerSeesEntries_RequesterGetsForbid()
     {
         _db.AuditLogs.Add(new AuditLog
@@ -144,8 +109,7 @@ public class AuditLogTests : IDisposable
         var manager = new AuditController(_db);
         SetUser(manager, "boss", "MANAGER");
         var ok = Assert.IsType<OkObjectResult>(await manager.GetAuditLogs("Request", 1));
-        var page = Assert.IsType<PagedResultDto<AuditLog>>(ok.Value);
-        Assert.Single(page.Items);
+        Assert.Single((System.Collections.IEnumerable)ok.Value!);
 
         var requester = new AuditController(_db);
         SetUser(requester, "u1", "REQUESTER");

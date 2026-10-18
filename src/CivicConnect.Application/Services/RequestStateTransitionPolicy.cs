@@ -42,11 +42,11 @@ public sealed class RequestStateTransitionPolicy
         return true;
     }
 
-    public static bool IsAllowed(RequestState from, RequestState to) => (from, to) switch
+    private static bool IsAllowed(RequestState from, RequestState to) => (from, to) switch
     {
         (RequestState.Open, RequestState.Assigned or RequestState.Rejected or RequestState.Cancelled) => true,
         (RequestState.Assigned, RequestState.InProgress or RequestState.Rejected or RequestState.Cancelled) => true,
-        (RequestState.InProgress, RequestState.Resolved or RequestState.Cancelled) => true,
+        (RequestState.InProgress, RequestState.Resolved or RequestState.Rejected or RequestState.Cancelled or RequestState.Closed) => true,
         (RequestState.Resolved, RequestState.Closed) => true,
         _ => false
     };
