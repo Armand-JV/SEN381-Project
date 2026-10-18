@@ -77,7 +77,7 @@ public class AuditLogTests : IDisposable
         _db.Requests.Add(request);
         await _db.SaveChangesAsync();
 
-        var controller = RequestsControllerAs("boss", "ADMIN");
+        var controller = RequestsControllerAs("boss", "MANAGER");
         var result = await controller.UpdateState(
             request.Id, new UpdateStateDto { NewState = RequestState.Assigned, Reason = "Assigning" });
 
