@@ -343,6 +343,7 @@ public class RequestsController : ControllerBase
 
         var request = await _context.Requests.FindAsync(id);
         if (request == null) return NotFound();
+        if (!_accessControl.CanAccess(User, request)) return Forbid();
 
         if (!AssignedTransitionPolicy.IsAllowed(request.State, RequestState.Assigned))
         {
@@ -385,6 +386,7 @@ public class RequestsController : ControllerBase
     {
         var request = await _context.Requests.FindAsync(id);
         if (request == null) return NotFound();
+        if (!_accessControl.CanAccess(User, request)) return Forbid();
 
         if (!Enum.IsDefined(dto.NewState))
         {
