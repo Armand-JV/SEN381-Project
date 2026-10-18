@@ -47,23 +47,74 @@ public sealed class RequesterSliceTests : IClassFixture<TestWebApplicationFactor
     public async Task CreateRequest_MaxLengthsAccepted_AndOverLimitRejected()
     {
         var client = _factory.CreateClient().AsRequester("requester-boundary");
-        var accepted = await client.PostAsJsonAsync("/api/requests", new CreateRequestDto
+
+        var titleAtLimit = await client.PostAsJsonAsync("/api/requests", new CreateRequestDto
         {
             Title = new string('t', 200),
+            Description = "Description",
+            CategoryId = 1
+        });
+        Assert.Equal(HttpStatusCode.Created, titleAtLimit.StatusCode);
+
+        var descriptionOneBelowLimit = await client.PostAsJsonAsync("/api/requests", new CreateRequestDto
+        {
+            Title = "Description boundary",
+            Description = new string('d', 1999),
+            CategoryId = 1
+        });
+        Assert.Equal(HttpStatusCode.Created, descriptionOneBelowLimit.StatusCode);
+
+        var descriptionAtLimit = await client.PostAsJsonAsync("/api/requests", new CreateRequestDto
+        {
+            Title = "Description boundary",
             Description = new string('d', 2000),
             CategoryId = 1
         });
-        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, descriptionAtLimit.StatusCode);
 
-        var rejected = await client.PostAsJsonAsync("/api/requests", new CreateRequestDto
+        var titleOverLimit = await client.PostAsJsonAsync("/api/requests", new CreateRequestDto
         {
             Title = new string('t', 201),
             Description = "Description",
             CategoryId = 1
         });
-        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
-    }
+        Assert.Equal(HttpStatusCode.BadRequest, titleOverLimit.StatusCode);
 
+        var descriptionOverLimit = await client.PostAsJsonAsync("/api/requests", new CreateRequestDto
+        {
+            Title = "Description boundary",
+            Description = new string('d', 2001),
+            CategoryId = 1
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, descriptionOverLimit.StatusCode);
+    }
+    [Fact]
+    public async Task CreateRequest_CreatesInitialHistoryLinkedToSavedRequest()
+    {
+        const string requesterId = "requester-initial-history";
+        var response = await _factory.CreateClient().AsRequester(requesterId)
+            .PostAsJsonAsync("/api/requests", new CreateRequestDto
+            {
+                Title = "Initial history test",
+                Description = "Verify initial history persistence.",
+                CategoryId = 1
+            });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var created = await response.Content.ReadFromJsonAsync<CreatedRequestDto>();
+        Assert.NotNull(created);
+
+        using var db = _factory.CreateDbContext();
+        var request = Assert.Single(db.Requests.Where(r => r.Id == created.Id));
+        Assert.Equal(requesterId, request.RequesterId);
+
+        var history = Assert.Single(db.StatusHistories.Where(h => h.RequestId == created.Id));
+        Assert.Equal(RequestState.Open, history.PreviousState);
+        Assert.Equal(RequestState.Open, history.NewState);
+        Assert.Equal(requesterId, history.ChangedBy);
+        Assert.Equal("Initial submission", history.Reason);
+    }
     [Fact]
     public async Task GetMyRequests_UsesActorAndReturnsPagedStateAndCategory()
     {
