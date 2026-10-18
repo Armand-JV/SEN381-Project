@@ -106,16 +106,16 @@ The rows above record M3 evidence for the final integrated slice available at re
 | AC-003 | Unique request identifier | Met | Numeric `Request.Id`; `CreateRequest_ValidSubmission_ReturnsCreatedDtoAndPersistsInitialHistory` |
 | AC-004 | Requester views own requests and status | Met | `GetMyRequests_*`; `JwtAuthFlowTests.RegisterCreateListRead_WithRealJwt_PreservesOwnershipAndRoleRestrictions` |
 | AC-005 | Requester views status history | Met | `GetHistory_IncludesInitialAndChronologicallyOrdersRows_AndEnforcesOwnership` |
-| AC-006 | Meaningful feedback/notification on status change | Not Met | `RequestStateNotifier`; `issue_27_observer_test_evidence.md`; log-only best-effort delivery; TD-03 |
+| AC-006 | Meaningful feedback/notification on status change | Partially Met | `RequestsController.AssignRequest` and `UpdateState`; `NotificationsController`; `Notification` entity and `AddNotifications` migration; `NotificationsPage.tsx`; `RequestControllerTests.UpdateState_CreatesRequesterScopedNotification_ForStateChange`; observer limitation TD-03 |
 | AC-007 | Staff views relevant requests; outside unavailable | Partially Met | Staff role gates; `GetRequest_StaffOutsideAssignment_ReturnsForbidden`; queue scope gap noted in PED v4.0 |
 | AC-008 | Staff filter/search/sort by attributes | Met | `GetStaffRequests_CombinesFiltersAndPaging`; state/category/assignee filters; search deferred (TD-10) |
 | AC-009 | Staff view full request details | Partially Met | `GetRequest_SeededRequestIncludesComment`; exhaustive detail assertions absent |
 | AC-010 | Assignment recorded; unauthorised refused | Met | `AssignRequest_UpdatesStateHistoryAndAuditWithActor`; requester-forbidden assignment test |
 | AC-011 | Controlled transitions recorded; only authorised transitions | Partially Met | `RequestStateTransitionPolicy`; `UpdateState_ClosedToOpen_ReturnsBadRequest`; complete permutation matrix untested |
 | AC-012 | Track actions/comments/resolution information | Partially Met | `AddComment_*`; internal/public visibility tests; dedicated resolution-information assertion absent |
-| AC-013 | Resolve/close requests; requester sees change | Met | `UpdateState_ValidTransition_ReturnsOkAndPersistsHistory`; `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate` |
+| AC-013 | Resolve/close requests; requester sees change | Partially Met | `UpdateState_ValidTransition_ReturnsOkAndPersistsHistory`; `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate` |
 | AC-014 | Management views activity including major changes | Met | `DashboardSummaryTests`; `ManagementTests`; `AuditLogTests`; `/api/audit` |
-| AC-015 | Identify open, overdue, closed and resolved | Partially Met | `/api/reports/requests-summary`; age/stalled filtering works; overdue semantics undefined (CR-002) |
+| AC-015 | Identify open, overdue, closed and resolved | Partially Met | `/api/reports/requests-summary`; `/api/management/overdue`; `ManagementTests.Overdue_ReturnsOnlyActiveRequestsOlderThanSevenDays`; `ManagerDashboardPage.tsx`. Overdue includes Open/Assigned/InProgress requests with `CreatedAt < DateTime.UtcNow.AddDays(-7)`. Original M1 due-date/SLA semantics remain unapproved; the moving-clock test does not prove the exact seven-day boundary; mature age buckets and escalation remain deferred (CR-002). |
 | AC-016 | View requests by category, status and/or other criteria | Met | Dashboard/filter endpoints; `DashboardSummaryTests` filter combination |
 | AC-017 | Authorisation before protected access | Met | JWT bearer configuration; `[Authorize]`; anonymous tests; real app-issued JWT flow tested |
 | AC-018 | Role-based authorisation limits actions | Met | Role attributes; `GetStaffRequests_Requester_ReturnsForbidden`; auth service tests |
@@ -128,9 +128,9 @@ The rows above record M3 evidence for the final integrated slice available at re
 
 ### Evidence and limitation summary
 
-- **Scope arithmetic:** 14 Met + 9 Partially Met + 1 Not Met = 18.5 / 24 = **77.1%**. This is below the target of 80%. No approved scope change is claimed.
+- **Scope arithmetic:** 14 Met + 10 Partially Met + 0 Not Met = 19.0 / 24 = **79.2%**. This is below the target of 80%. No approved scope change is claimed.
 - **Historical context:** M3 rows record verified evidence at `a1e189b`. This M4 continuation does not alter those rows; it adds a reconciliation view for every original M1 acceptance criterion and links each to exact implementation/test/defect and register references.
-- **Pending verification:** The 118-test local run (2026-10-16) is historical. A fresh test run against the final assessed commit is pending. Hosted CI/governance/run evidence is pending. Human review of AI-assisted artefacts is pending where registers record it as such.
+- **Local verification history:** On M4 application baseline `f6ef48d`, the initial full 139-test run reported 137 passed and 2 failed: `UserStoreTests.FindByEmailAsync_NormalizesInput_AndExecutesOnPostgres` could not connect to PostgreSQL at `127.0.0.1:5432`, and `DatabaseConnectionTests.CanConnectToDatabase_WhenConfiguredWithEnv` lacked connection configuration. After the required database environment was loaded, the full-solution run on documentation checkout `c7cf770` passed **139 tests, 0 failed, 0 skipped** on 2026-10-18. Captured output: `docs/Tests/results/m4-full-test-run-2026-10-18.log`. Hosted CI and production verification remain unconfirmed.
 - **Production readiness:** Current deployment evidence supports staging/demo use. Production is not evidenced. See PED v4.0 Section 6 for the staged no-go decision and required remediation.
 - **Final RTM freeze:** On team freeze, update the `Assessed commit/tag` row above to match the frozen release and record the human reviewer date.
 ## M4 follow-up — staff object-scope regression (2026-10-18)

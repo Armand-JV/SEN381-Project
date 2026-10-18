@@ -31,3 +31,11 @@ Local format, vulnerability, and coverage checks are evidence for this checkout 
 - Local format verification: passed on 2026-10-15.
 - P2 human review of AI-assisted artifacts: pending; see `docs/P2-AI-Usage-Register.md`.
 - Hosted CI run and artifact: pending. Add the run URL after CI executes; do not substitute local `TestResults/` for hosted evidence.
+
+### Additional local full-suite verification — 2026-10-16
+
+- Command: `dotnet test ".\src\CivicConnect.slnx" --configuration Release --no-restore --logger "console;verbosity=minimal"`.
+- Result: solution build succeeded; 119 passed, 0 failed, 0 skipped.
+- Environment: Windows, .NET 10, EF Core InMemory test database.
+- Interpretation: all 119 automated tests passed in this local run.
+- Limitations: this run does not establish PostgreSQL runtime behavior, production authentication behavior, hosted CI success, or complete acceptance of every requirement. Runtime warnings about the missing `wwwroot` directory and HTTPS redirect configuration appeared during testing.
