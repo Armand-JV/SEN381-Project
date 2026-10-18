@@ -92,3 +92,15 @@ FR-014/NFR-020/NFR-024 trace to the M1 baseline via PED v2 §E (carried forward,
 | **FR-016** Category administration | Manager creates/renames categories; names non-empty and unique; unknown id gives 404 | `ManagementController`: `POST/PUT categories` (ADMIN/MANAGER only); no schema change | `ManagementTests`: create + duplicate-conflict + blank-reject + forbid; rename + unknown-404 | **Verified** in test host. |
 | **NFR-020** Audit trail for consequential actions | Every state change writes exactly one append-only audit entry in the same transaction; manager-only reads | `AuditLog` entity + migration `M3P3AuditLogAndQueryIndexes`; `UpdateState`/`Reassign` write `StateChanged`/`Reassigned` entries; `GET /api/audit` (ADMIN/MANAGER only, no write path) | `AuditLogTests`: exactly-one-entry, manager-read/requester-forbid; live audit read on shared DB | **Verified** in test host + live. Assignment via P2 endpoint writes the separate `AuditEntries` table (one-table decision pending). |
 | **NFR-024** Responsive everyday operations (CR-001: ≥95% within 3s) | Dashboard filtering p95 within 3s with zero errors under the defined workload | M3-DATA-01 indexes; NBomber scenario `src/CivicConnect.Perf` (10 VUs × 2 min, 1k rows, local scratch DB) | TC-P-01 run 2026-10-15: 109,525 reqs, p95 23.71ms — PASS; limits recorded in `docs/P3-Decisions.md` | **Verified** within stated limits (localhost only; no production claim). |
+
+## M4 follow-up — staff object-scope regression (2026-10-18)
+
+Regression branch: `test/m4-batch2-test-coverage`, commit `d2d0f39`.
+Local verification: 121 passed, 0 failed, 0 skipped; formatting and
+diff checks passed. Evidence: `docs/Tests/results/m4-staff-scope-regression-2026-10-18.md`.
+
+This evidence remains on the regression branch until merged. It covers
+staff assignment and state-update attempts outside the permitted scope.
+It does not close FR-007, NFR-019, or PED risk R8: staff queue scope and
+object-level retrieval restrictions remain outstanding. Hosted CI and
+production JWT/database behavior are not established by these local checks.
