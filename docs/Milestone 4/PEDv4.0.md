@@ -182,7 +182,7 @@ Team's final declaration and owner sign-off: **PENDING**.
 
 ## 8. Final RTM and artefact continuity
 
-The existing RTM remains authoritative: `docs/Milestone 3/Individual M3 documents/RTM-M3.md`. It retains M1/M2 wording and M3 evidence, and includes an M4 AC-001–AC-024 continuation referencing this PED. This PED's final accounting reports 14 Met, 10 Partially Met and 0 Not Met (**19.0/24 = 79.2%**), including AC-006's requester-scoped in-app notification implementation and AC-013's incomplete requester-visible resolution assertion. Reconcile the RTM's M4 AC-006/AC-007/AC-014/AC-015/AC-019 rows and summary with this PED; preserve original M1 meanings and record notification UI/API evidence, scope limitations and the 139-test/frontend-build verification. Team must record exact assessed commit/tag and human reviewer/date after final verification.
+The existing RTM remains authoritative: `docs/Milestone 3/Individual M3 documents/RTM-M3.md`. It retains M1/M2 wording and M3 evidence, and includes an M4 AC-001–AC-024 continuation referencing this PED. This PED's final accounting reports 14 Met, 10 Partially Met and 0 Not Met (**19.0/24 = 79.2%**), including AC-006's requester-scoped in-app notification implementation and AC-013's incomplete requester-visible resolution assertion. The RTM reconciliation is complete: AC-006 and AC-013 are Partially Met; AC-007, AC-015 and AC-019 are Partially Met; AC-014 is Met. The RTM preserves original M1 meanings and includes notification UI/API evidence and scope limitations. Verification details are recorded in the RTM and this PED: an initial full 139-test run failed two database-dependent tests before the connection environment was configured. After loading the required database settings, the full solution run on 2026-10-18 passed 139 tests, with 0 failures and 0 skipped. Captured output: `docs/Tests/results/m4-full-test-run-2026-10-18.log`. Hosted CI evidence remains unconfirmed. The team must record the exact assessed commit/tag and human reviewer/date after final verification.
 
 Existing registers continue rather than being recreated:
 
@@ -199,7 +199,7 @@ Existing registers continue rather than being recreated:
 
 **Scope.** 19.0/24 applicable M1 acceptance-criterion points equals 79.2%. Core submission, categorisation, identity, requester history, assignment, management filtering, persistence, audit and performance work. Requester-facing in-app notification (AC-006) is partially met; complete delivery channels/coverage, strict staff scope, overdue semantics, exhaustive evidence and production assurance remain incomplete or partial.
 
-**Quality.** Confidence comes from the 139-test local run, successful TypeScript/Vite production build, automated unit/API/integration/E2E evidence, PostgreSQL migration checks, configured CI gates, static/dependency checks and the local performance run. Confidence is limited by missing matching hosted-CI evidence, mixed InMemory/PostgreSQL test providers, incomplete negative JWT validation, absent automated notification UI tests and localhost-only performance evidence.
+**Quality.** The earlier reconciliation note referenced `c7cf770`, but that commit is not an ancestor of this isolated checkout. The current documentation-editing HEAD is `358b824`; this is not, by itself, the frozen assessed application commit. The repository baseline inspected for this PED remains recorded above as `8514915`, and the assessed submission commit/tag remains pending team freeze. The initial full local run reported 137 passed and 2 database-configuration-dependent failures. After the required database environment was loaded, the full solution run on 2026-10-18 passed **139/139 tests, 0 failed, 0 skipped**. Captured output: `docs/Tests/results/m4-full-test-run-2026-10-18.log`. This confirms local test-suite success, not a green hosted-CI run or production readiness. Complete negative JWT validation, automated notification UI tests and production-scale performance evidence remain outstanding.
 
 **Risk/debt.** No material limitation is hidden. Production security/operations blockers remain open; technical debt affects maintainability, concurrency, notification delivery guarantees and audit clarity. In-app requester notification is now available, but external channels, retry/outbox and automated UI evidence remain absent.
 
@@ -215,17 +215,16 @@ Existing registers continue rather than being recreated:
 2. Demonstrate requester registration/login, valid submission, validation failure, own request/history, notification page, unread count, and requester-scoped notifications from assignment/state changes.
 3. Demonstrate staff queue filters, assignment, legal transition, comment visibility and requester-facing result.
 4. Demonstrate manager dashboard, stalled/overdue request, reassignment, category operation, paged audit trail.
-5. Use §2.2 to show one met and one partial commitment, note that no criterion remains Not Met, and use §2.4 for deferred/out-of-scope items. Reproduce 19.0/24 = 79.17% (79.2%) without rounding it up to the 80% target.
-6. Show selected RTM evidence, M3 defect/debt/risk status and performance result with limits.
-7. Defend staging/no-go decision, blockers and next remediation.
-8. Each member traces one contribution from M1 requirement through implementation, evidence, limitation and consequence.
+5. Show selected RTM evidence, M3 defect/debt/risk status and performance result with limits.
+6. Defend staging/no-go decision, blockers and next remediation.
+7. Each member traces one contribution from M1 requirement through implementation, evidence, limitation and consequence.
 
 ## 11. Individual engineering defence preparation
 
 | Member | Evidence to defend |
 |---|---|
 | Armand Vermeulen | Staff/security construction, JWT and role controls, CI/workflow, credential provisioning, technical debt and deployment security limits. Trace AC-017–AC-020 to `Program.cs`, controllers, auth tests and CI. |
-| Ditheto Phaho | M1 requirements baseline, requester slice FR-001–006, validation, ownership/history/feedback and requester notifications, RTM and defect interpretation. Explain AC-006 notification variance and numeric-ID decision. |
+| Ditheto Phaho | M2-to-M3 conformance, risk-based test selection, black-box/integration/system test evidence and execution, RTM and defect traceability, PED reconciliation and verification limitations. Explain the acceptance-criterion score, database-dependent test failures and release-verification boundaries. |
 | Riegardt Weich | Management dashboard/oversight/category/audit slice, staging/performance/release evidence and no-go reasoning. Trace AC-014–AC-016 and AC-024 to tests, performance harness and risk register. |
 
 All members must understand combined product, final scope arithmetic, controlled changes, unresolved risks, AI accountability and evidence limitations—not only their own code.

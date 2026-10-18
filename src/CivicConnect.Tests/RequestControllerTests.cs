@@ -574,32 +574,28 @@ public class RequestControllerTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
-    public async Task UpdateState_StaffOutsideScope_ReturnsForbiddenAndLeavesRequestUnchanged()
+    public async Task UpdateState_StaffOutsideAssignment_ReturnsForbiddenAndLeavesRequestUnchanged()
     {
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
-        var request = new Request
-        {
-            CategoryId = 1,
-            Title = "Protected assignment",
-            Description = "Description",
-            RequesterId = "requester-1",
-            AssigneeId = "staff-other",
-            State = RequestState.Assigned,
-            CreatedAt = DateTime.UtcNow
-        };
-        db.Requests.Add(request);
-        await db.SaveChangesAsync();
+        var request = await SeedRequest(
+            RequestState.Assigned,
+            requesterId: "requester-scope",
+            assigneeId: "staff-owner");
 
-        var response = await _factory.CreateClient().AsStaff("staff-1").PutAsJsonAsync(
+        var response = await _factory.CreateClient().AsStaff("staff-outsider").PutAsJsonAsync(
             $"/api/requests/{request.Id}/state",
-            new UpdateStateDto { NewState = RequestState.InProgress, Reason = "Should fail" });
+            new UpdateStateDto { NewState = RequestState.InProgress, Reason = "Start work" });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
         using var verificationScope = _factory.Services.CreateScope();
         var verificationDb = verificationScope.ServiceProvider.GetRequiredService<CivicConnectDbContext>();
-        Assert.Equal(RequestState.Assigned, verificationDb.Requests.Single(item => item.Id == request.Id).State);
+        var persisted = verificationDb.Requests.Single(item => item.Id == request.Id);
+
+        Assert.Equal(RequestState.Assigned, persisted.State);
+        Assert.Equal("staff-owner", persisted.AssigneeId);
         Assert.Empty(verificationDb.StatusHistories.Where(item => item.RequestId == request.Id));
+        Assert.Empty(verificationDb.AuditLogs.Where(item =>
+            item.EntityType == nameof(Request) && item.EntityId == request.Id));
     }
 
     [Fact]
