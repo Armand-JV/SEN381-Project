@@ -50,6 +50,7 @@ export interface Request {
   id: number; title: string; description: string; categoryId: number; categoryName: string;
   state: RequestState; createdAt: string; requesterId: string; assigneeId?: string | null;
   comments: RequestComment[]; feedback?: Feedback | null;
+  allowedTransitions: RequestState[]; history: StatusHistory[];
 }
 
 export interface StaffRequestListItemDto {
@@ -60,6 +61,10 @@ export interface StaffRequestListItemDto {
 export interface RequesterRequestListItemDto {
   id: number; title: string; categoryId: number; categoryName: string;
   state: RequestState; stateName: string; createdAt: string;
+}
+
+export interface NotificationDto {
+  id: number; requestId: number; message: string; createdAt: string; readAt?: string | null;
 }
 
 export interface PagedResultDto<T> {

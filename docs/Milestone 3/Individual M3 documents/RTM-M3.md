@@ -2,8 +2,8 @@
 
 **Baseline:** M1 requirements, continued by Milestone 2 PED v2.0 §E (RTM v2.0).  
 **Scope:** Staff requirements FR-007–FR-013 and security NFR-017–NFR-019 for issue #86.  
-**Related CI evidence:** Issue #69; `.github/workflows/test.yml`; `docs/Milestone 3/PED-Section-5-CI-and-Coverage.md`.  
-**Current branch evidence:** https://github.com/Armand-JV/SEN381-Project/actions/runs/38742180022/job/116446413398?pr=135; hosted CI run URL is added only after an actual run.  
+**Related CI evidence:** Issue #69; `.github/workflows/test.yml`; `docs/Milestone 3/Individual M3 documents/PED-Section-5-CI-and-Coverage.md`.  
+**Historical CI evidence:** [run #38742180022](https://github.com/Armand-JV/SEN381-Project/actions/runs/38742180022/job/116446413398?pr=135); this predates current M4 changes.  
 **Local verification updated 2026-10-16:** Full suite: 119 passed, 0 failed, 0 skipped before the latest assertion change. Focused `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate`: 1 passed, 0 failed after the change. Hosted CI: successful `build-and-test` job for commit `ab65886` on 2026-10-16 ([run #38939041921](https://github.com/Armand-JV/SEN381-Project/actions/runs/38939041921/job/117101739558?pr=143)).
 **Coverage limit:** Cobertura execution counts do not prove requirement satisfaction, assertion quality, authorization completeness, or production-configuration behavior. Critical gaps remain listed in the PED §5 note and row statuses below.
 **AI record:** `docs/P2-AI-Usage-Register.md`; requester-slice entries: `docs/P1-AI-Usage-Register.md`; human verification remains pending before merge.
@@ -55,7 +55,7 @@ M3 issue titles were inferred before PED v2 was present. The crosswalk below pre
 - PED v2 proposed State objects; current implementation uses `RequestStateTransitionPolicy` with a central table. This is a Changed design implementation; behavior is tested, but design conformance is not claimed.
 - PED's proposed Reolved→InProgress reopen path is not present. The current policy has terminal `Closed`, `Cancelled`, and `Rejected` states. Full VT-011/VT-013 coverage therefore remains open.
 - Staff scope restriction beyond role authorization is not present in current `GetRequest`; do not mark FR-007/NFR-019 complete.
-- Coverage is reported separately in `docs/Milestone 3/PED-Section-5-CI-and-Coverage.md`; line/branch coverage never substitutes for these behavioral claims.
+- Coverage is reported separately in `docs/Milestone 3/Individual M3 documents/PED-Section-5-CI-and-Coverage.md`; line/branch coverage never substitutes for these behavioral claims.
 
 ## Carried-forward PED rows outside this slice
 
@@ -92,3 +92,44 @@ FR-014/NFR-020/NFR-024 trace to the M1 baseline via PED v2 §E (carried forward,
 | **FR-016** Category administration | Manager creates/renames categories; names non-empty and unique; unknown id gives 404 | `ManagementController`: `POST/PUT categories` (ADMIN/MANAGER only); no schema change | `ManagementTests`: create + duplicate-conflict + blank-reject + forbid; rename + unknown-404 | **Verified** in test host. |
 | **NFR-020** Audit trail for consequential actions | Every state change writes exactly one append-only audit entry in the same transaction; manager-only reads | `AuditLog` entity + migration `M3P3AuditLogAndQueryIndexes`; `UpdateState`/`Reassign` write `StateChanged`/`Reassigned` entries; `GET /api/audit` (ADMIN/MANAGER only, no write path) | `AuditLogTests`: exactly-one-entry, manager-read/requester-forbid; live audit read on shared DB | **Verified** in test host + live. Assignment via P2 endpoint writes the separate `AuditEntries` table (one-table decision pending). |
 | **NFR-024** Responsive everyday operations (CR-001: ≥95% within 3s) | Dashboard filtering p95 within 3s with zero errors under the defined workload | M3-DATA-01 indexes; NBomber scenario `src/CivicConnect.Perf` (10 VUs × 2 min, 1k rows, local scratch DB) | TC-P-01 run 2026-10-15: 109,525 reqs, p95 23.71ms — PASS; limits recorded in `docs/P3-Decisions.md` | **Verified** within stated limits (localhost only; no production claim). |
+
+## M4 final continuation and M1 acceptance-criterion reconciliation
+
+The rows above record M3 evidence for the final integrated slice available at release-candidate commit `a1e189b`. PED v4.0 (this branch) now reconciles the full M1 commitment baseline of 24 acceptance criteria against the repository final baseline inspected at `70a36fb9ad99e1a51bcaab43741d2845c8d04833` (2026-10-17).
+
+### M4 final status table
+
+| M1 ID | Acceptance criterion | Final status | Final evidence reference |
+|---|---|---|---|
+| AC-001 | Valid submission creates request; missing info rejected | Met | `RequesterSliceTests.CreateRequest_InvalidInput_ReturnsFieldValidationAndPersistsNothing`; `RequestControllerTests.CreateRequest_*` |
+| AC-002 | Controlled category selection; invalid rejected | Met | `GET /api/categories`; `CategoryValidationContext`; category strategy tests |
+| AC-003 | Unique request identifier | Met | Numeric `Request.Id`; `CreateRequest_ValidSubmission_ReturnsCreatedDtoAndPersistsInitialHistory` |
+| AC-004 | Requester views own requests and status | Met | `GetMyRequests_*`; `JwtAuthFlowTests.RegisterCreateListRead_WithRealJwt_PreservesOwnershipAndRoleRestrictions` |
+| AC-005 | Requester views status history | Met | `GetHistory_IncludesInitialAndChronologicallyOrdersRows_AndEnforcesOwnership` |
+| AC-006 | Meaningful feedback/notification on status change | Not Met | `RequestStateNotifier`; `issue_27_observer_test_evidence.md`; log-only best-effort delivery; TD-03 |
+| AC-007 | Staff views relevant requests; outside unavailable | Partially Met | Staff role gates; `GetRequest_StaffOutsideAssignment_ReturnsForbidden`; queue scope gap noted in PED v4.0 |
+| AC-008 | Staff filter/search/sort by attributes | Met | `GetStaffRequests_CombinesFiltersAndPaging`; state/category/assignee filters; search deferred (TD-10) |
+| AC-009 | Staff view full request details | Partially Met | `GetRequest_SeededRequestIncludesComment`; exhaustive detail assertions absent |
+| AC-010 | Assignment recorded; unauthorised refused | Met | `AssignRequest_UpdatesStateHistoryAndAuditWithActor`; requester-forbidden assignment test |
+| AC-011 | Controlled transitions recorded; only authorised transitions | Partially Met | `RequestStateTransitionPolicy`; `UpdateState_ClosedToOpen_ReturnsBadRequest`; complete permutation matrix untested |
+| AC-012 | Track actions/comments/resolution information | Partially Met | `AddComment_*`; internal/public visibility tests; dedicated resolution-information assertion absent |
+| AC-013 | Resolve/close requests; requester sees change | Met | `UpdateState_ValidTransition_ReturnsOkAndPersistsHistory`; `E2EJourneyTests.SubmitAssignResolve_RequesterSeesUpdate` |
+| AC-014 | Management views activity including major changes | Met | `DashboardSummaryTests`; `ManagementTests`; `AuditLogTests`; `/api/audit` |
+| AC-015 | Identify open, overdue, closed and resolved | Partially Met | `/api/reports/requests-summary`; age/stalled filtering works; overdue semantics undefined (CR-002) |
+| AC-016 | View requests by category, status and/or other criteria | Met | Dashboard/filter endpoints; `DashboardSummaryTests` filter combination |
+| AC-017 | Authorisation before protected access | Met | JWT bearer configuration; `[Authorize]`; anonymous tests; real app-issued JWT flow tested |
+| AC-018 | Role-based authorisation limits actions | Met | Role attributes; `GetStaffRequests_Requester_ReturnsForbidden`; auth service tests |
+| AC-019 | Sensitive information restricted to authorised staff | Partially Met | Ownership/internal-comment tests; staff-scope gap in queue |
+| AC-020 | Major changes tracked; actor recorded | Met | `AuditLogTests`; assignment state/audit writes; one-table cleanup open (TD-04) |
+| AC-021 | Clear labels, validation and feedback | Partially Met | API problem details; validation tests; React SPA pages; no formal usability evaluation recorded |
+| AC-022 | Request persists and remains retrievable | Met | EF/PostgreSQL migrations; initial-history tests; `DatabaseConnectionTests` |
+| AC-023 | Modular components support isolated change | Partially Met | Layered projects; patterns; direct DbContext use and unused repositories remain TD-01 |
+| AC-024 | ≥95% of operations within 3s under defined load | Met (within stated limits) | TC-P-01: 109,525 requests, 0 errors, p95 23.71 ms; localhost only |
+
+### Evidence and limitation summary
+
+- **Scope arithmetic:** 14 Met + 9 Partially Met + 1 Not Met = 18.5 / 24 = **77.1%**. This is below the target of 80%. No approved scope change is claimed.
+- **Historical context:** M3 rows record verified evidence at `a1e189b`. This M4 continuation does not alter those rows; it adds a reconciliation view for every original M1 acceptance criterion and links each to exact implementation/test/defect and register references.
+- **Pending verification:** The 118-test local run (2026-10-16) is historical. A fresh test run against the final assessed commit is pending. Hosted CI/governance/run evidence is pending. Human review of AI-assisted artefacts is pending where registers record it as such.
+- **Production readiness:** Current deployment evidence supports staging/demo use. Production is not evidenced. See PED v4.0 Section 6 for the staged no-go decision and required remediation.
+- **Final RTM freeze:** On team freeze, update the `Assessed commit/tag` row above to match the frozen release and record the human reviewer date.

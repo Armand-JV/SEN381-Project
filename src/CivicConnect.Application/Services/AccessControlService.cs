@@ -13,17 +13,12 @@ public class AccessControlService : IAccessControlService
     public bool CanAccess(ClaimsPrincipal user, Request request)
     {
         // Admins and managers can access everything
-        if (user.IsInRole("Admin") || user.IsInRole("MANAGER"))
+        if (user.IsInRole("ADMIN") || user.IsInRole("MANAGER"))
         {
             return true;
         }
 
         var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.Identity?.Name;
-
-        if (request.RequesterId == userId)
-        {
-            return true;
-        }
 
         if (user.IsInRole("STAFF"))
         {

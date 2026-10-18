@@ -10,19 +10,19 @@ Coverage counts instrumented lines and branches executed by this test workload. 
 
 The following gaps remain open in the current evidence:
 
-- Staff object-level request scope: assigned staff accessing a request outside permitted scope is not blocked or tested (FR-007, NFR-019).
-- Production authentication: issuer, audience, signature, and token-validation behavior are not exercised by the test authentication handler (NFR-017, NFR-018).
+- Staff object-level request scope: detail access now rejects staff outside their assignments, but queue scope and its acceptance criteria remain incomplete (FR-007, NFR-019).
+- Production authentication: a real app-issued JWT flow is tested, but invalid issuer, audience, signature, and token expiry are not fully covered (NFR-017, NFR-018).
 - State workflow: full legal/illegal transition matrix, role permutations, and exactly-one history/audit effects are not fully covered (FR-011).
-- Resolution journey: requester-visible state after staff resolution/closure lacks a complete end-to-end assertion (FR-013).
+- Resolution journey: requester-visible resolution state is asserted end-to-end in the test host; close-path and full role/object-scope acceptance remain incomplete (FR-013).
 - Detail and resolution evidence: exhaustive request-detail fields and dedicated resolution-information assertions are absent (FR-009, FR-012).
 
 These are requirement and security gaps, not defects that a line or branch percentage can close. Add targeted tests or record an explicit acceptance decision before changing their RTM status.
 
 ## Findings and disposition
 
-The canonical static/security findings register is [`docs/CI/M3-CI-07-findings.md`](../CI/M3-CI-07-findings.md). It records each repository-visible finding's source tool, severity, decision, owner, and residual-risk or debt link. Accepted and open items are expanded in the [Technical Debt Register](../Technical-Debt-Register.md) and [Residual Risk Statement](../Residual-Risk-Statement.md). PED §9 provides the defect and quality interpretation: [`PED-Section-9-Defects-and-Quality.md`](PED-Section-9-Defects-and-Quality.md).
+The canonical static/security findings register is [`docs/CI/M3-CI-07-findings.md`](../../CI/M3-CI-07-findings.md). It records each repository-visible finding's source tool, severity, decision, owner, and residual-risk or debt link. Accepted and open items are expanded in the [Technical Debt Register](Technical-Debt-Register.md) and [Residual Risk Statement](Residual-Risk-Statement.md). PED §9 provides the defect and quality interpretation: [`PED-Section-9-Defects-and-Quality.md`](PED-Section-9-Defects-and-Quality.md).
 
-Local format, vulnerability, and coverage checks are evidence for this checkout only. They do not establish hosted GitHub settings, future advisory status, production JWT behavior, or complete requirement satisfaction. Hosted CI remains pending until a real run URL and artifact are available.
+Local format, vulnerability, and coverage checks are evidence for their recorded checkout only. They do not establish hosted GitHub settings, future advisory status, complete production JWT behavior, or complete requirement satisfaction. A hosted `build-and-test` job passed for commit `ab65886` on 2026-10-16 ([run #38939041921](https://github.com/Armand-JV/SEN381-Project/actions/runs/38939041921/job/117101739558?pr=143)); this is historical evidence, not verification of the final M4 commit.
 
 ## Verification evidence
 
