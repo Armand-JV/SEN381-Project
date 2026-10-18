@@ -3,19 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import api from "../api/client";
 import type { Category, ProblemDetails } from "../api/types";
 
-const TITLE_MAX = 200;
-const DESCRIPTION_MAX = 2000;
-
 const fieldMessage = (errors: Record<string, string[]> | undefined, field: string) =>
   errors?.[field]?.[0] ?? "";
-
-function charClass(value: string, max: number) {
-  const len = value.length;
-  if (len === 0) return "muted";
-  if (len >= max) return "error";
-  if (len > max * 0.8) return "warn";
-  return "";
-}
 
 export default function SubmitRequestPage() {
   const navigate = useNavigate();
@@ -27,13 +16,6 @@ export default function SubmitRequestPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-
-  const clearTitleError = () => {
-    if (errors.title) setErrors((previous) => { const copy = { ...previous }; delete copy.title; return copy; });
-  };
-  const clearDescriptionError = () => {
-    if (errors.description) setErrors((previous) => { const copy = { ...previous }; delete copy.description; return copy; });
-  };
 
   useEffect(() => {
     let active = true;
@@ -68,26 +50,13 @@ export default function SubmitRequestPage() {
     <p className="muted">Describe a civic issue for the municipality to review.</p>
     {error && <p className="error" role="alert">{error}</p>}
     <form className="card" onSubmit={submit} noValidate>
-      <label className="field">Title <span className={`muted ${charClass(title, TITLE_MAX)}`}>({title.length}/{TITLE_MAX})</span>
-        <input
-          value={title}
-          required
-          maxLength={TITLE_MAX}
-          onChange={(event) => { setTitle(event.target.value); clearTitleError(); }}
-          aria-invalid={!!errors.title}
-        />
-        {fieldMessage(errors, "title") && <span className="error" role="alert">{fieldMessage(errors, "title")}</span>}
+      <label className="field">Title <span className="muted">(required, 200 characters maximum)</span>
+        <input value={title} maxLength={200} required onChange={(event) => setTitle(event.target.value)} />
+        {fieldMessage(errors, "title") && <span className="error">{fieldMessage(errors, "title")}</span>}
       </label>
-      <label className="field">Description <span className={`muted ${charClass(description, DESCRIPTION_MAX)}`}>({description.length}/{DESCRIPTION_MAX})</span>
-        <textarea
-          value={description}
-          required
-          rows={7}
-          maxLength={DESCRIPTION_MAX}
-          onChange={(event) => { setDescription(event.target.value); clearDescriptionError(); }}
-          aria-invalid={!!errors.description}
-        />
-        {fieldMessage(errors, "description") && <span className="error" role="alert">{fieldMessage(errors, "description")}</span>}
+      <label className="field">Description <span className="muted">(required, 2,000 characters maximum)</span>
+        <textarea value={description} maxLength={2000} required rows={7} onChange={(event) => setDescription(event.target.value)} />
+        {fieldMessage(errors, "description") && <span className="error">{fieldMessage(errors, "description")}</span>}
       </label>
       <label className="field">Category
         <select value={categoryId} required disabled={loading} onChange={(event) => setCategoryId(event.target.value)}>

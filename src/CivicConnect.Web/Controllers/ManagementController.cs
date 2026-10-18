@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using CivicConnect.Application.Services;
+using CivicConnect.Application.Policies;
 using CivicConnect.Domain.Entities;
 using CivicConnect.Domain.Enums;
 using CivicConnect.Web.Data;
@@ -31,7 +31,7 @@ public class ManagementController : ControllerBase
         User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
         ?? User.Identity?.Name ?? "Anonymous";
 
-    // GET api/management/stalled?olderThanDays=7 — includes overdue active requests.
+    // GET api/management/stalled?olderThanDays=7 — plain age filter, no overdue semantics.
     [HttpGet("stalled")]
     [Authorize]
     public async Task<IActionResult> GetStalled([FromQuery] int olderThanDays = 7)
@@ -39,8 +39,9 @@ public class ManagementController : ControllerBase
         if (!IsManager()) return Forbid();
         if (olderThanDays < 0) return BadRequest("olderThanDays must be zero or positive.");
 
+        var cutoff = DateTime.UtcNow.AddDays(-olderThanDays);
         var now = DateTime.UtcNow;
-        var cutoff = now.AddDays(-olderThanDays);
+
         var items = await _context.Requests
             .AsNoTracking()
             .Where(r => (r.State == RequestState.Open || r.State == RequestState.Assigned)
@@ -53,41 +54,7 @@ public class ManagementController : ControllerBase
                 State = r.State,
                 CreatedAt = r.CreatedAt,
                 AssigneeId = r.AssigneeId,
-                DaysOld = (int)(now - r.CreatedAt).TotalDays,
-                IsOverdue = false
-            })
-            .ToListAsync();
-
-        foreach (var item in items)
-        {
-            item.IsOverdue = item.CreatedAt < now.AddDays(-7);
-        }
-
-        return Ok(items);
-    }
-
-    // GET api/management/overdue — active requests older than seven UTC calendar days.
-    [HttpGet("overdue")]
-    [Authorize]
-    public async Task<IActionResult> GetOverdue()
-    {
-        if (!IsManager()) return Forbid();
-
-        var cutoff = DateTime.UtcNow.AddDays(-7);
-        var items = await _context.Requests
-            .AsNoTracking()
-            .Where(r => r.CreatedAt < cutoff
-                && (r.State == RequestState.Open || r.State == RequestState.Assigned || r.State == RequestState.InProgress))
-            .OrderBy(r => r.CreatedAt)
-            .Select(r => new StalledRequestDto
-            {
-                Id = r.Id,
-                Title = r.Title,
-                State = r.State,
-                CreatedAt = r.CreatedAt,
-                AssigneeId = r.AssigneeId,
-                DaysOld = (int)(DateTime.UtcNow - r.CreatedAt).TotalDays,
-                IsOverdue = true
+                DaysOld = (int)(now - r.CreatedAt).TotalDays
             })
             .ToListAsync();
 
@@ -204,7 +171,6 @@ public class StalledRequestDto
     public DateTime CreatedAt { get; set; }
     public string? AssigneeId { get; set; }
     public int DaysOld { get; set; }
-    public bool IsOverdue { get; set; }
 }
 
 public class ReassignRequestDto

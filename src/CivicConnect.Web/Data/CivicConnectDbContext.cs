@@ -17,21 +17,11 @@ public class CivicConnectDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<Feedback> Feedback => Set<Feedback>();
-    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        modelBuilder.Entity<Notification>()
-            .HasIndex(notification => new { notification.RecipientId, notification.CreatedAt });
-
-        modelBuilder.Entity<Notification>()
-            .HasOne(notification => notification.Request)
-            .WithMany(request => request.Notifications)
-            .HasForeignKey(notification => notification.RequestId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Feedback>()
             .HasIndex(feedback => feedback.RequestId)
